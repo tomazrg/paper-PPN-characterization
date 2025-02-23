@@ -1,0 +1,2739 @@
+---
+title: ""
+message: false
+warning: false
+---
+
+# Packages
+
+```{r}
+
+library(gsheet) # Importação dos dados na nuvem
+library(dplyr) # Manipulação 
+library(readxl) # Improtação de dados no computador
+#library(vegan) # Gráfico de HeatMap
+library(ggthemes)  #Tema de fundo do gráfico
+library(tidyverse) # Conjunto de pacotes
+library(cowplot) # theme
+library(writexl) #Exportação de dados
+library(ggalluvial)
+library(ggplot2) # Gráficos
+library(lme4) # GLM
+library(glmmTMB) #GLMM
+library(rnaturalearth)
+library(ggplot2)
+library(ggridges)
+library(performance)
+library(DHARMa)
+library(PresenceAbsence)
+library(caret)
+library(lmtest)
+```
+
+# Incidence - Logistic regression
+
+```{r}
+incidence = gsheet2tbl("https://docs.google.com/spreadsheets/d/1gr-TUpB-mNAhZVOBEcmHRwE1etorOeJvlhjcu7wEpz4/edit?usp=sharing")
+```
+
+
+```{r}
+
+incidence =  incidence %>% 
+ filter(soil %in% c("Argissolo","Cambissolo","Latossolo"))
+
+#incidence = incidence %>% 
+ # filter(!city %in% c("DFL","DFC"))
+
+incidence[incidence$soil== "Argissolo",c("soil_corrigido")] <- 2
+incidence[incidence$soil== "Cambissolo",c("soil_corrigido")] <- 5
+incidence[incidence$soil== "Latossolo",c("soil_corrigido")] <- 6
+
+incidence[incidence$cropping== "Corn_soybean",c("cropping_corrigido")] <- 1
+incidence[incidence$cropping== "Corn_others",c("cropping_corrigido")] <- 2
+
+incidence[incidence$tillage== "No-till",c("tillage_corrigido")] <- 1
+incidence[incidence$tillage== "Minimum",c("tillage_corrigido")] <- 1
+incidence[incidence$tillage== "Conventional",c("tillage_corrigido")] <- 2
+
+incidence[incidence$region== "South",c("region_corrigido")] <- 1
+incidence[incidence$region== "Southwest",c("region_corrigido")] <- 2
+incidence[incidence$region== "East",c("region_corrigido")] <- 3
+incidence[incidence$region== "Center",c("region_corrigido")] <- 4
+
+
+
+```
+
+
+# Selecting of variables (LASSO)
+
+```{r}
+library(glmnet)
+
+all_genus = incidence |> 
+   dplyr::select(incidence,sand,silt,clay,ec,ph,cropping_corrigido,tillage_corrigido,altitute,soil_corrigido)
+
+
+set.seed(123)
+lambdas <- 10^seq(2, -3, by = -.1)
+
+y <- all_genus %>%
+  dplyr::select(incidence) %>%
+  as.matrix()
+
+
+
+X <- all_genus%>%
+  dplyr::select(-incidence) %>%
+  as.matrix()
+
+
+# Setting alpha = 1 implements lasso regression
+lasso_reg_1week <- cv.glmnet(X, y,
+  alpha = 1,
+  family = "binomial",
+  lambda = lambdas,
+  standardize = TRUE,
+  nfolds = 5
+)
+plot(lasso_reg_1week)
+
+# Best
+lambda_best_1week <- lasso_reg_1week$lambda.min
+lambda_best_1week
+
+lasso_model_1week <- glmnet(X,
+  y,
+  alpha = 1,
+  family = "binomial",
+  lambda = lambda_best_1week,
+  standardize = TRUE
+)
+coef(lasso_model_1week)
+assess.glmnet(lasso_model_1week,
+  newx = X,
+  newy = y
+)
+
+plot(roc.glmnet(lasso_model_1week,
+  newx = X,
+  newy = factor(y)
+),
+type = "l"
+) # produces
+```
+
+
+# Framework modeling
+
+```{r}
+
+pratylenchus_log = incidence %>% 
+  filter(genus == "Pratylenchus") %>% 
+    filter(soil_corrigido %in% c("2","5","6")) %>% 
+   filter(region_corrigido %in% c("1","2","3","4")) 
+  
+
+
+praty_log = glm(incidence ~  altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = pratylenchus_log, 
+                family = binomial(link = "logit"))
+
+check_singularity(praty_log)
+model_performance(praty_log)
+check_model(praty_log)
+
+
+#with(summary(praty_log), 1 - deviance/null.deviance)
+
+
+#----------------------------------------------------------
+
+helicotylenchus_log = incidence %>% 
+  filter(genus == "Helicotylenchus")%>% 
+    filter(soil_corrigido %in% c("2","5","6"))%>% 
+   filter(region_corrigido %in% c("1","2","3","4"))
+
+heli_log = glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph,  data = helicotylenchus_log, 
+                family = binomial(link = "logit"))
+
+check_model(heli_log)
+model_performance(heli_log)
+
+
+#----------------------------------------------------------
+
+rotylenchulus_log = incidence %>% 
+  filter(genus == "Rotylenchulus")%>% 
+   filter(soil_corrigido %in% c("2","5","6"))%>% 
+   filter(region_corrigido %in% c("1","2","3","4"))
+
+is.na(rotylenchulus_log)
+
+rotyl_log = glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = rotylenchulus_log, 
+                family = binomial(link = "logit"))
+
+check_model(rotyl_log)
+model_performance(rotyl_log)
+
+
+#----------------------------------------------------------
+
+criconematidae_log = incidence %>% 
+  filter(genus == "Criconematidae")%>% 
+    filter(soil_corrigido %in% c("2","5","6"))%>% 
+   filter(region_corrigido %in% c("1","2","3","4"))
+
+crico_log = glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = criconematidae_log, 
+                family = binomial(link = "logit"))
+
+check_model(rotyl_log)
+model_performance(rotyl_log)
+
+
+#----------------------------------------------------------
+
+aphelenchus_log = incidence %>% 
+  filter(genus == "Aphelenchus")%>% 
+    filter(soil_corrigido %in% c("2","5","6"))%>% 
+   filter(region_corrigido %in% c("1","2","3","4"))
+
+aphel_log = glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = aphelenchus_log, 
+                family = binomial(link = "logit"))
+
+check_model(aphel_log)
+model_performance(aphel_log)
+
+
+#----------------------------------------------------------
+
+aphelenchoides_log = incidence %>% 
+  filter(genus == "Aphelenchoides")%>% 
+    filter(soil_corrigido %in% c("2","5","6"))%>% 
+   filter(region_corrigido %in% c("1","2","3","4"))
+
+aphels_log = glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = aphelenchoides_log, 
+                family = binomial(link = "logit"))
+
+check_model(aphels_log)
+model_performance(aphels_log)
+
+```
+
+## Wald x² and LRT - Adicionar linha para cada terms = ...
+
+```{r}
+
+#Pratylenchus
+
+DAAG::vif(praty_log)
+coef(praty_log)
+summary(praty_log)
+
+aod::wald.test(Sigma = vcov(praty_log), b = coef(praty_log), Terms =8)
+lrtest(praty_log)
+
+
+#Helicotylenchus
+
+summary(heli_log)
+aod::wald.test(Sigma = vcov(heli_log), b = coef(heli_log), Terms = 8)
+lrtest (heli_log)
+
+
+#Rotylenchulus
+
+summary(rotyl_log)
+aod::wald.test(Sigma = vcov(rotyl_log), b = coef(rotyl_log), Terms = 8)
+lrtest (rotyl_log)
+
+
+#Criconematidae
+
+summary(crico_log)
+coef(crico_log)
+aod::wald.test(Sigma = vcov(crico_log), b = coef(crico_log), Terms = 8)
+lrtest(crico_log)
+
+
+#Aphelenchus
+
+DAAG::vif(aphel_log)
+summary(aphel_log)
+coef(aphel_log)
+aod::wald.test(Sigma = vcov(aphel_log), b = coef(aphel_log), Terms = 8)
+lrtest (aphel_log)
+
+
+#Aphelenchoides
+
+summary(aphels_log)
+coef(aphels_log)
+aod::wald.test(Sigma = vcov(aphels_log), b = coef(aphels_log), Terms = 8)
+lrtest (aphels_log)
+
+
+```
+
+## Models diagnostic (graphic)
+
+```{r}
+check_singularity(praty_log)
+check_model(praty_log)
+
+simulationOutput <- simulateResiduals(fittedModel = praty_log)
+plot(simulationOutput)
+```
+
+### Aphelenchus
+
+```{r}
+
+#Model log with best
+aphelenchus_binomial <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = aphelenchus_log,family = binomial(link = "logit"))
+
+summary(aphelenchus_binomial)
+
+pred_aphelenchus <- predict(aphelenchus_binomial, aphelenchus_log, type = "response")
+
+
+#Better thresholds
+dat_aphelenchus <- data.frame(1, aphelenchus_log$incidence, pred_aphelenchus)
+  optimal.thresholds(dat_aphelenchus)
+
+# Confusion matrix with the MAXsen+spe threshold
+confusionMatrix(data = as.factor(as.numeric(pred_aphelenchus > 0.82)),  mode= "everything",  reference = as.factor(aphelenchus_log$incidence))
+
+
+#Plot
+auc.roc.plot(dat_aphelenchus)
+calibration.plot(dat_aphelenchus)
+
+error.threshold.plot(dat_aphelenchus, opt.methods = 3) #takes a single model and plots the sensitivity and specificity as a function of threshold. 
+pcc(cmx(dat_aphelenchus), st.dev = TRUE) #calculates the percent correctly classified and (optionally) the associated standard deviation from a confusion matrix.
+
+presence.absence.accuracy(dat_aphelenchus,threshold=0.82,st.dev=FALSE) #Calculates five accuracy measures (pcc, sensitivity, specificity, Kappa, and AUC)
+presence.absence.summary(dat_aphelenchus) #Produces four types of Presence/Absence accuracy plots for a single set of model Predictions
+
+roc_aphelenchus <- roc.plot.calculate(dat_aphelenchus) #data frame
+
+roc_aphelenchus |> 
+  ggplot(aes(threshold, sensitivity))+
+  geom_line()+
+  geom_line(aes(threshold, specificity))+
+  geom_line(aes(threshold, Kappa))
+
+
+#LOOCV
+acc_aphelenchus <- NULL
+for(i in 1:nrow(aphelenchus_log))
+{
+    # Train-test splitting
+    # 499 samples -> fitting
+    # 1 sample -> testing
+    train <- aphelenchus_log[-i,]
+    test <- aphelenchus_log[i,]
+    
+    # Fitting
+    model <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = aphelenchus_log,
+                family = binomial(link = "logit"))
+    
+    # Predict results
+    results_prob <- predict(model,test,type='response')
+    
+    # If prob > 0.5 then 1, else 0
+    results <- ifelse(results_prob > 0.82,1,0)
+    
+    # Actual answers
+    answers <- test$incidence
+    
+    # Calculate accuracy
+    misClasificError <- mean(answers != results)
+    
+    # Collecting results
+    acc_aphelenchus[i] <- 1-misClasificError
+}
+
+# Average accuracy of the model
+mean(acc_aphelenchus)
+
+
+```
+
+### Aphelenchoides
+
+```{r}
+#Model log with best
+aphelenchoides_binomial <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = aphelenchoides_log,family = binomial(link = "logit"))
+
+summary(aphelenchoides_binomial)
+
+pred_aphelenchoides <- predict(aphelenchoides_binomial, aphelenchoides_log, type = "response")
+
+#Better thresholds
+dat_aphelenchoides <- data.frame(1, aphelenchoides_log$incidence, pred_aphelenchoides)
+optimal.thresholds(dat_aphelenchoides)
+
+# Confusion matrix with the MAXsen+spe threshold
+confusionMatrix(data = as.factor(as.numeric(pred_aphelenchoides > 0.65)),  mode= "everything",  reference = as.factor(aphelenchoides_log$incidence))
+
+
+#Plot
+auc.roc.plot(dat_aphelenchoides)
+calibration.plot(dat_aphelenchoides)
+
+error.threshold.plot(dat_aphelenchoides, opt.methods = 3) #takes a single model and plots the sensitivity and specificity as a function of threshold. 
+pcc(cmx(dat_aphelenchoides), st.dev = TRUE) #calculates the percent correctly classified and (optionally) the associated standard deviation from a confusion matrix.
+
+presence.absence.accuracy(dat_aphelenchoides,threshold=0.65,st.dev=FALSE) #Calculates five accuracy measures (pcc, sensitivity, specificity, Kappa, and AUC)
+presence.absence.summary(dat_aphelenchoides) #Produces four types of Presence/Absence accuracy plots for a single set of model Predictions
+
+roc_aphelenchoides <- roc.plot.calculate(dat_aphelenchoides) #data frame
+
+roc_aphelenchoides |> 
+  ggplot(aes(threshold, sensitivity))+
+  geom_line()+
+  geom_line(aes(threshold, specificity))+
+  geom_line(aes(threshold, Kappa))
+
+
+#LOOCV
+acc_aphelenchoides <- NULL
+for(i in 1:nrow(aphelenchoides_log))
+{
+    # Train-test splitting
+    # 499 samples -> fitting
+    # 1 sample -> testing
+    train <- aphelenchoides_log[-i,]
+    test <- aphelenchoides_log[i,]
+    
+    # Fitting
+    model <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = aphelenchoides_log,
+                family = binomial(link = "logit"))
+    
+    # Predict results
+    results_prob <- predict(model,test,type='response')
+    
+    # If prob > 0.5 then 1, else 0
+    results <- ifelse(results_prob > 0.65,1,0)
+    
+    # Actual answers
+    answers <- test$incidence
+    
+    # Calculate accuracy
+    misClasificError <- mean(answers != results)
+    
+    # Collecting results
+    acc_aphelenchoides[i] <- 1-misClasificError
+}
+
+# Average accuracy of the model
+mean(acc_aphelenchoides)
+
+
+```
+
+### Criconematidae
+
+```{r}
+#Model log with best
+criconematidae_binomial <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = criconematidae_log,family = binomial(link = "logit"))
+
+summary(criconematidae_binomial)
+
+pred_criconematidae <- predict(criconematidae_binomial, criconematidae_log, type = "response")
+
+#Better thresholds
+dat_criconematidae <- data.frame(1, criconematidae_log$incidence, pred_criconematidae)
+optimal.thresholds(dat_criconematidae)
+
+# Confusion matrix with the MAXsen+spe threshold
+confusionMatrix(data = as.factor(as.numeric(pred_criconematidae > 0.26)),  mode= "everything",  reference = as.factor(criconematidae_log$incidence))
+
+
+#Plot
+auc.roc.plot(dat_criconematidae)
+calibration.plot(dat_criconematidae)
+
+error.threshold.plot(dat_criconematidae, opt.methods = 3) #takes a single model and plots the sensitivity and specificity as a function of threshold. 
+pcc(cmx(dat_criconematidae), st.dev = TRUE) #calculates the percent correctly classified and (optionally) the associated standard deviation from a confusion matrix.
+
+presence.absence.accuracy(dat_criconematidae,threshold=0.26,st.dev=FALSE) #Calculates five accuracy measures (pcc, sensitivity, specificity, Kappa, and AUC)
+presence.absence.summary(dat_criconematidae) #Produces four types of Presence/Absence accuracy plots for a single set of model Predictions
+
+roc_criconematidae <- roc.plot.calculate(dat_criconematidae) #data frame
+
+roc_criconematidae |> 
+  ggplot(aes(threshold, sensitivity))+
+  geom_line()+
+  geom_line(aes(threshold, specificity))+
+  geom_line(aes(threshold, Kappa))
+
+
+#LOOCV
+acc_criconematidae <- NULL
+for(i in 1:nrow(criconematidae_log))
+{
+    # Train-test splitting
+    # 499 samples -> fitting
+    # 1 sample -> testing
+    train <- criconematidae_log[-i,]
+    test <- criconematidae_log[i,]
+    
+    # Fitting
+    model <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = criconematidae_log,
+                family = binomial(link = "logit"))
+    
+    # Predict results
+    results_prob <- predict(model,test,type='response')
+    
+    # If prob > 0.5 then 1, else 0
+    results <- ifelse(results_prob > 0.26,1,0)
+    
+    # Actual answers
+    answers <- test$incidence
+    
+    # Calculate accuracy
+    misClasificError <- mean(answers != results)
+    
+    # Collecting results
+    acc_criconematidae[i] <- 1-misClasificError
+}
+
+# Average accuracy of the model
+mean(acc_criconematidae)
+
+
+```
+
+### Helicotylenchus
+
+```{r}
+#Model log with best
+helicotylenchus_binomial <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = helicotylenchus_log,family = binomial(link = "logit"))
+
+summary(helicotylenchus_binomial)
+
+pred_helicotylenchus <- predict(helicotylenchus_binomial, helicotylenchus_log, type = "response")
+
+#Better thresholds
+dat_helicotylenchus <- data.frame(1, helicotylenchus_log$incidence, pred_helicotylenchus)
+optimal.thresholds(dat_helicotylenchus)
+
+# Confusion matrix with the MAXsen+spe threshold
+confusionMatrix(data = as.factor(as.numeric(pred_helicotylenchus > 0.9)),  mode= "everything",  reference = as.factor(helicotylenchus_log$incidence))
+
+
+#Plot
+auc.roc.plot(dat_helicotylenchus)
+calibration.plot(dat_helicotylenchus)
+
+error.threshold.plot(dat_helicotylenchus, opt.methods = 3) #takes a single model and plots the sensitivity and specificity as a function of threshold. 
+pcc(cmx(dat_helicotylenchus), st.dev = TRUE) #calculates the percent correctly classified and (optionally) the associated standard deviation from a confusion matrix.
+
+presence.absence.accuracy(dat_helicotylenchus,threshold=.9,st.dev=FALSE) #Calculates five accuracy measures (pcc, sensitivity, specificity, Kappa, and AUC)
+presence.absence.summary(dat_helicotylenchus) #Produces four types of Presence/Absence accuracy plots for a single set of model Predictions
+
+roc_helicotylenchus <- roc.plot.calculate(dat_helicotylenchus) #data frame
+
+roc_helicotylenchus |> 
+  ggplot(aes(threshold, sensitivity))+
+  geom_line()+
+  geom_line(aes(threshold, specificity))+
+  geom_line(aes(threshold, Kappa))
+
+
+#LOOCV
+acc_helicotylenchus <- NULL
+for(i in 1:nrow(helicotylenchus_log))
+{
+    # Train-test splitting
+    # 499 samples -> fitting
+    # 1 sample -> testing
+    train <- helicotylenchus_log[-i,]
+    test <- helicotylenchus_log[i,]
+    
+    # Fitting
+    model <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = helicotylenchus_log,
+                family = binomial(link = "logit"))
+    
+    # Predict results
+    results_prob <- predict(model,test,type='response')
+    
+    # If prob > 0.5 then 1, else 0
+    results <- ifelse(results_prob > 0.9,1,0)
+    
+    # Actual answers
+    answers <- test$incidence
+    
+    # Calculate accuracy
+    misClasificError <- mean(answers != results)
+    
+    # Collecting results
+    acc_helicotylenchus[i] <- 1-misClasificError
+}
+
+# Average accuracy of the model
+mean(acc_helicotylenchus)
+
+
+
+```
+
+### Rotylenchulus
+
+```{r}
+#Model log with best
+rotylenchulus_binomial <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = rotylenchulus_log,family = binomial(link = "logit"))
+
+summary(rotylenchulus_binomial)
+
+pred_rotylenchulus <- predict(rotylenchulus_binomial, rotylenchulus_log, type = "response")
+
+#Better thresholds
+dat_rotylenchulus <- data.frame(1, rotylenchulus_log$incidence, pred_rotylenchulus)
+optimal.thresholds(dat_rotylenchulus)
+
+# Confusion matrix with the MAXsen+spe threshold
+confusionMatrix(data = as.factor(as.numeric(pred_rotylenchulus > .06)),  mode= "everything",  reference = as.factor(rotylenchulus_log$incidence))
+
+
+#Plot
+auc.roc.plot(dat_rotylenchulus)
+calibration.plot(dat_rotylenchulus)
+
+error.threshold.plot(dat_rotylenchulus, opt.methods = 3) #takes a single model and plots the sensitivity and specificity as a function of threshold. 
+pcc(cmx(dat_rotylenchulus), st.dev = TRUE) #calculates the percent correctly classified and (optionally) the associated standard deviation from a confusion matrix.
+
+presence.absence.accuracy(dat_rotylenchulus,threshold=.06,st.dev=FALSE) #Calculates five accuracy measures (pcc, sensitivity, specificity, Kappa, and AUC)
+presence.absence.summary(dat_rotylenchulus) #Produces four types of Presence/Absence accuracy plots for a single set of model Predictions
+
+roc_rotylenchulus <- roc.plot.calculate(dat_rotylenchulus) #data frame
+
+roc_rotylenchulus |> 
+  ggplot(aes(threshold, sensitivity))+
+  geom_line()+
+  geom_line(aes(threshold, specificity))+
+  geom_line(aes(threshold, Kappa))
+
+
+#LOOCV
+acc_rotylenchulus <- NULL
+for(i in 1:nrow(rotylenchulus_log))
+{
+    # Train-test splitting
+    # 499 samples -> fitting
+    # 1 sample -> testing
+    train <- rotylenchulus_log[-i,]
+    test <- rotylenchulus_log[i,]
+    
+    # Fitting
+    model <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = rotylenchulus_log,
+                family = binomial(link = "logit"))
+    
+    # Predict results
+    results_prob <- predict(model,test,type='response')
+    
+    # If prob > 0.5 then 1, else 0
+    results <- ifelse(results_prob > .06,1,0)
+    
+    # Actual answers
+    answers <- test$incidence
+    
+    # Calculate accuracy
+    misClasificError <- mean(answers != results)
+    
+    # Collecting results
+    acc_rotylenchulus[i] <- 1-misClasificError
+}
+
+# Average accuracy of the model
+mean(acc_rotylenchulus)
+
+```
+
+### Pratylenchus
+
+```{r}
+#Model log with best
+pratylenchus_binomial <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = pratylenchus_log,family = binomial(link = "logit"))
+
+summary(pratylenchus_binomial)
+
+pred_pratylenchus <- predict(pratylenchus_binomial, pratylenchus_log, type = "response")
+
+#Better thresholds
+dat_pratylenchus <- data.frame(1, pratylenchus_log$incidence, pred_pratylenchus)
+optimal.thresholds(dat_pratylenchus)
+
+# Confusion matrix with the MAXsen+spe threshold
+confusionMatrix(data = as.factor(as.numeric(pred_pratylenchus > 0.58)),  mode= "everything",  reference = as.factor(pratylenchus_log$incidence))
+
+
+#Plot
+auc.roc.plot(dat_pratylenchus)
+calibration.plot(dat_pratylenchus)
+
+error.threshold.plot(dat_pratylenchus, opt.methods = 3) #takes a single model and plots the sensitivity and specificity as a function of threshold. 
+pcc(cmx(dat_pratylenchus), st.dev = TRUE) #calculates the percent correctly classified and (optionally) the associated standard deviation from a confusion matrix.
+
+presence.absence.accuracy(dat_pratylenchus,threshold=.58,st.dev=FALSE) #Calculates five accuracy measures (pcc, sensitivity, specificity, Kappa, and AUC)
+presence.absence.summary(dat_pratylenchus) #Produces four types of Presence/Absence accuracy plots for a single set of model Predictions
+
+roc_pratylenchus <- roc.plot.calculate(dat_pratylenchus) #data frame
+
+roc_pratylenchus |> 
+  ggplot(aes(threshold, sensitivity))+
+  geom_line()+
+  geom_line(aes(threshold, specificity))+
+  geom_line(aes(threshold, Kappa))
+
+
+#LOOCV
+acc_pratylenchus <- NULL
+for(i in 1:nrow(pratylenchus_log))
+{
+    # Train-test splitting
+    # 499 samples -> fitting
+    # 1 sample -> testing
+    train <- pratylenchus_log[-i,]
+    test <- pratylenchus_log[i,]
+    
+    # Fitting
+    model <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = pratylenchus_log,
+                family = binomial(link = "logit"))
+    
+    # Predict results
+    results_prob <- predict(model,test,type='response')
+    
+    # If prob > 0.5 then 1, else 0
+    results <- ifelse(results_prob > 0.58,1,0)
+    
+    # Actual answers
+    answers <- test$incidence
+    
+    # Calculate accuracy
+    misClasificError <- mean(answers != results)
+    
+    # Collecting results
+    acc_pratylenchus[i] <- 1-misClasificError
+}
+
+# Average accuracy of the model
+mean(acc_pratylenchus)
+
+
+
+```
+
+## Joining
+
+```{r}
+
+loocv_all = cbind(acc_aphelenchoides,acc_aphelenchus,acc_criconematidae,
+                  acc_helicotylenchus,acc_pratylenchus,acc_rotylenchulus)
+```
+
+
+## Odds ratio
+
+### By cropping
+
+```{r}
+
+
+#Helicotylenchus
+
+helicotylenchus_log$predicted = predict(heli_log, type = "response")
+#helicotylenchus_log$predicted = exp(helicotylenchus_log$predicted)
+helicotylenchus_log$predicted = (helicotylenchus_log$predicted/(1 - helicotylenchus_log$predicted))
+
+helicotylenchus_log01_cropping<-helicotylenchus_log$predicted[helicotylenchus_log$cropping_corrigido==1]
+helicotylenchus_log02_cropping<-helicotylenchus_log$predicted[helicotylenchus_log$cropping_corrigido==2]
+
+helicotylenchus_log01_cropping = mean(helicotylenchus_log01_cropping)
+helicotylenchus_log02_cropping = mean(helicotylenchus_log02_cropping)
+
+
+odd_helicotylenchus_cropping = c(helicotylenchus_log01_cropping,helicotylenchus_log02_cropping)
+
+
+#logodd_diff<-s1/s2
+
+
+odd_helicotylenchus_cropping = as.data.frame(odd_helicotylenchus_cropping)
+odd_helicotylenchus_cropping$nematode = c("Helicotylenchus","Helicotylenchus")
+colnames(odd_helicotylenchus_cropping) = c("odd","nematode")
+#odd_helicotylenchus_cropping$odd<-exp(odd_helicotylenchus_cropping$odd)
+
+#----------------------------------------------------------
+
+#Aphelenchus
+
+aphelenchus_log$predicted = predict(aphel_log, type = "response")
+#aphelenchus_log$predicted = exp(aphelenchus_log$predicted)
+aphelenchus_log$predicted = (aphelenchus_log$predicted/(1 - aphelenchus_log$predicted))
+
+aphelenchus_log01_cropping<-aphelenchus_log$predicted[aphelenchus_log$cropping_corrigido==1]
+aphelenchus_log02_cropping<-aphelenchus_log$predicted[aphelenchus_log$cropping_corrigido==2]
+
+aphelenchus_log01_cropping = mean(aphelenchus_log01_cropping)
+aphelenchus_log02_cropping = mean(aphelenchus_log02_cropping)
+
+odd_aphelenchus_cropping = c(aphelenchus_log01_cropping,aphelenchus_log02_cropping)
+
+
+odd_aphelenchus_cropping = as.data.frame(odd_aphelenchus_cropping)
+odd_aphelenchus_cropping$nematode = c("Aphelenchus","Aphelenchus")
+colnames(odd_aphelenchus_cropping) = c("odd","nematode")
+#odd_aphelenchus_cropping$odd<-exp(odd_aphelenchus_cropping$odd)
+
+#----------------------------------------------------------
+
+#Aphelenchoides
+
+aphelenchoides_log$predicted = predict(aphels_log, type = "response")
+#aphelenchoides_log$predicted = exp(aphelenchoides_log$predicted)
+aphelenchoides_log$predicted = (aphelenchoides_log$predicted/(1 - aphelenchoides_log$predicted))
+
+aphelenchoides_log01_cropping<-aphelenchoides_log$predicted[aphelenchoides_log$cropping_corrigido==1]
+aphelenchoides_log02_cropping<-aphelenchoides_log$predicted[aphelenchoides_log$cropping_corrigido==2]
+
+aphelenchoides_log01_cropping = mean(aphelenchoides_log01_cropping)
+aphelenchoides_log02_cropping = mean(aphelenchoides_log02_cropping)
+
+odd_aphelenchoides_cropping = c(aphelenchoides_log01_cropping,aphelenchoides_log02_cropping)
+
+
+odd_aphelenchoides_cropping = as.data.frame(odd_aphelenchoides_cropping)
+odd_aphelenchoides_cropping$nematode = c("Aphelenchoides","Aphelenchoides")
+colnames(odd_aphelenchoides_cropping) = c("odd","nematode")
+#odd_aphelenchoides_cropping$odd<-exp(odd_aphelenchoides_cropping$odd)
+
+#----------------------------------------------------------
+
+#Criconematidae
+
+criconematidae_log$predicted = predict(crico_log, type = "response")
+#criconematidae_log$predicted = exp(criconematidae_log$predicted)
+criconematidae_log$predicted = (criconematidae_log$predicted/(1 - criconematidae_log$predicted))
+
+criconematidae_log01_cropping<-criconematidae_log$predicted[criconematidae_log$cropping_corrigido==1]
+criconematidae_log02_cropping<-criconematidae_log$predicted[criconematidae_log$cropping_corrigido==2]
+
+criconematidae_log01_cropping = mean(criconematidae_log01_cropping)
+criconematidae_log02_cropping = mean(criconematidae_log02_cropping)
+
+odd_criconematidae_cropping = c(criconematidae_log01_cropping,criconematidae_log02_cropping)
+
+
+odd_criconematidae_cropping = as.data.frame(odd_criconematidae_cropping)
+odd_criconematidae_cropping$nematode = c("Criconematidae","Criconematidae")
+colnames(odd_criconematidae_cropping) = c("odd","nematode")
+#odd_criconematidae_cropping$odd<-exp(odd_criconematidae_cropping$odd)
+
+#----------------------------------------------------------
+
+#Pratylenchus
+
+pratylenchus_log$predicted = predict(praty_log, type = "response")
+pratylenchus_log$predicted = (pratylenchus_log$predicted/(1 - pratylenchus_log$predicted))
+
+
+pratylenchus_log01_cropping<-pratylenchus_log$predicted[pratylenchus_log$cropping_corrigido==1]
+pratylenchus_log02_cropping<-pratylenchus_log$predicted[pratylenchus_log$cropping_corrigido==2]
+
+pratylenchus_log01_cropping = mean(pratylenchus_log01_cropping)
+pratylenchus_log02_cropping = mean(pratylenchus_log02_cropping)
+
+odd_pratylenchus_cropping = c(pratylenchus_log01_cropping,pratylenchus_log02_cropping)
+
+
+odd_pratylenchus_cropping = as.data.frame(odd_pratylenchus_cropping)
+odd_pratylenchus_cropping$nematode = c("Pratylenchus","Pratylenchus")
+colnames(odd_pratylenchus_cropping) = c("odd","nematode")
+#odd_pratylenchus_cropping$odd<-exp(odd_pratylenchus_cropping$odd)
+
+#----------------------------------------------------------
+
+#Rotylenchulus
+
+rotylenchulus_log$predicted = predict(rotyl_log, type = "response")
+#rotylenchulus_log$predicted = exp(rotylenchulus_log$predicted)
+rotylenchulus_log$predicted = (rotylenchulus_log$predicted/(1 - rotylenchulus_log$predicted))
+
+rotylenchulus_log01_cropping<-rotylenchulus_log$predicted[rotylenchulus_log$cropping_corrigido==1]
+rotylenchulus_log02_cropping<-rotylenchulus_log$predicted[rotylenchulus_log$cropping_corrigido==2]
+
+rotylenchulus_log01_cropping = mean(rotylenchulus_log01_cropping)
+rotylenchulus_log02_cropping = mean(rotylenchulus_log02_cropping)
+
+odd_rotylenchulus_cropping = c(rotylenchulus_log01_cropping,rotylenchulus_log02_cropping)
+
+
+odd_rotylenchulus_cropping = as.data.frame(odd_rotylenchulus_cropping)
+odd_rotylenchulus_cropping$nematode = c("Rotylenchulus","Rotylenchulus")
+colnames(odd_rotylenchulus_cropping) = c("odd","nematode")
+#odd_rotylenchulus_cropping$odd = exp(odd_rotylenchulus_cropping$odd)
+
+
+all_odd_cropping = rbind(odd_aphelenchoides_cropping,odd_aphelenchus_cropping,
+                         odd_criconematidae_cropping,
+                         odd_helicotylenchus_cropping,odd_pratylenchus_cropping,
+                         odd_rotylenchulus_cropping)
+  #all_odd_cropping$odd = exp(all_odd_cropping$odd)
+
+#----------------------------------------------------------
+  
+odd_ratio_cropping = all_odd_cropping %>% 
+    group_by(nematode) %>% 
+  summarise(
+    n = n(),
+    ratio = odd[1]/odd[2],
+    #ratio_exp = exp(odd[1]/odd[2]),
+    mean = mean(odd),
+    sd = sd(odd),
+   se=sd/sqrt(n))%>% 
+  group_by(nematode) %>% 
+   mutate(
+    lower_log = log(ratio) - 1.96 * se, # Calcula o limite inferior do intervalo de confiança na escala logarítmica
+    upper_log = log(ratio) + 1.96 * se, # Calcula o limite superior do intervalo de confiança na escala logarítmica
+    lower = plogis(lower_log), # Transforma o limite inferior para a escala linear (odds ratio)
+    upper = plogis(upper_log)  # Transforma o limite superior para a escala linear (odds ratio)
+  )
+  
+  
+  #mutate(
+   #ic =se * qt((1-0.05)/2 + .5, n-1),
+  # lower = (ratio_exp - 1.96 * se),
+  # upper = (ratio_exp + 1.96 * se)
+  # )
+
+odd_ratio_cropping$practice = c("cropping","cropping","cropping","cropping",
+                                "cropping","cropping")
+
+#----------------------------------------------------------
+
+cropping = odd_ratio_cropping %>% 
+  #filter(!nematode %in% c("Helicotylenchus","Aphelenchoides")) %>% 
+  ggplot(aes(nematode,ratio))+
+  geom_hline(yintercept=1, linetype="dashed", color = "black", size = 1)+
+  geom_pointrange(aes(ymin = ratio - lower, ymax = ratio + upper), color = "black", size = 1)+
+    theme_minimal()+
+  labs(x = "Morphological group",
+       y = "Odd ratio")+
+  theme(text = element_text(size = 22))+
+  coord_flip()
+
+
+#ggsave("odd_ratio_cropping.png", dpi = 600, bg = "white")
+
+```
+
+### By tillage
+
+```{r}
+
+#Helicotylenchus
+
+helicotylenchus_log$predicted = predict(heli_log, type = "response")
+helicotylenchus_log$predicted = (helicotylenchus_log$predicted/(1 - helicotylenchus_log$predicted))
+#helicotylenchus_log$predicted = exp(helicotylenchus_log$predicted)
+#helicotylenchus_log$predicted1 = predict(heli_log, type = "link")
+#helicotylenchus_log$predicted1 = exp(helicotylenchus_log$predicted1)
+
+helicotylenchus_log01_tillage<-helicotylenchus_log$predicted[helicotylenchus_log$tillage_corrigido==1]
+helicotylenchus_log02_tillage<-helicotylenchus_log$predicted[helicotylenchus_log$tillage_corrigido==2]
+
+helicotylenchus_log01_tillage = mean(helicotylenchus_log01_tillage)
+helicotylenchus_log02_tillage = mean(helicotylenchus_log02_tillage)
+
+
+odd_helicotylenchus_tillage = c(helicotylenchus_log01_tillage,helicotylenchus_log02_tillage)
+
+
+#odd_helicotylenchus_tillage<-exp(odd_helicotylenchus_tillage)
+
+odd_helicotylenchus_tillage = as.data.frame(odd_helicotylenchus_tillage)
+odd_helicotylenchus_tillage$nematode = c("Helicotylenchus","Helicotylenchus")
+colnames(odd_helicotylenchus_tillage) = c("odd","nematode")
+#odd_helicotylenchus_tillage$odd = exp(odd_helicotylenchus_tillage$odd)
+
+#----------------------------------------------------------
+
+#Aphelenchus
+
+aphelenchus_log$predicted = predict(aphel_log, type = "response")
+#aphelenchus_log$predicted = exp(aphelenchus_log$predicted)
+
+aphelenchus_log$predicted = (aphelenchus_log$predicted/(1 - aphelenchus_log$predicted))
+
+aphelenchus_log01_tillage<-aphelenchus_log$predicted[aphelenchus_log$tillage_corrigido==1]
+aphelenchus_log02_tillage<-aphelenchus_log$predicted[aphelenchus_log$tillage_corrigido==2]
+
+aphelenchus_log01_tillage = mean(aphelenchus_log01_tillage)
+aphelenchus_log02_tillage = mean(aphelenchus_log02_tillage)
+
+odd_aphelenchus_tillage = c(aphelenchus_log01_tillage,aphelenchus_log02_tillage)
+
+
+odd_aphelenchus_tillage = as.data.frame(odd_aphelenchus_tillage)
+odd_aphelenchus_tillage$nematode = c("Aphelenchus","Aphelenchus")
+colnames(odd_aphelenchus_tillage) = c("odd","nematode")
+#odd_aphelenchus_tillage$odd = exp(odd_aphelenchus_tillage$odd)
+
+#----------------------------------------------------------
+
+#Aphelenchoides
+
+aphelenchoides_log$predicted = predict(aphels_log, type = "response")
+#aphelenchoides_log$predicted = exp(aphelenchoides_log$predicted)
+
+aphelenchoides_log$predicted = (aphelenchoides_log$predicted/(1 - aphelenchoides_log$predicted))
+
+aphelenchoides_log01_tillage<-aphelenchoides_log$predicted[aphelenchoides_log$tillage_corrigido==1]
+aphelenchoides_log02_tillage<-aphelenchoides_log$predicted[aphelenchoides_log$tillage_corrigido==2]
+
+aphelenchoides_log01_tillage = mean(aphelenchoides_log01_tillage)
+aphelenchoides_log02_tillage = mean(aphelenchoides_log02_tillage)
+
+odd_aphelenchoides_tillage = c(aphelenchoides_log01_tillage,aphelenchoides_log02_tillage)
+
+
+odd_aphelenchoides_tillage = as.data.frame(odd_aphelenchoides_tillage)
+odd_aphelenchoides_tillage$nematode = c("Aphelenchoides","Aphelenchoides")
+colnames(odd_aphelenchoides_tillage) = c("odd","nematode")
+#odd_aphelenchoides_tillage$odd = exp(odd_aphelenchoides_tillage$odd)
+
+#----------------------------------------------------------
+
+#Criconematidae
+
+criconematidae_log$predicted = predict(crico_log, type = "response")
+#criconematidae_log$predicted = exp(criconematidae_log$predicted)
+
+criconematidae_log$predicted = (criconematidae_log$predicted/(1 - criconematidae_log$predicted))
+
+criconematidae_log01_tillage<-criconematidae_log$predicted[criconematidae_log$tillage_corrigido==1]
+criconematidae_log02_tillage<-criconematidae_log$predicted[criconematidae_log$tillage_corrigido==2]
+
+criconematidae_log01_tillage = mean(criconematidae_log01_tillage)
+criconematidae_log02_tillage = mean(criconematidae_log02_tillage)
+
+odd_criconematidae_tillage = c(criconematidae_log01_tillage,criconematidae_log02_tillage)
+
+
+odd_criconematidae_tillage = as.data.frame(odd_criconematidae_tillage)
+odd_criconematidae_tillage$nematode = c("Criconematidae","Criconematidae")
+colnames(odd_criconematidae_tillage) = c("odd","nematode")
+#odd_criconematidae_tillage$odd = exp(odd_criconematidae_tillage$odd)
+
+#----------------------------------------------------------
+
+#Pratylenchus
+
+pratylenchus_log$predicted = predict(praty_log, type = "response")
+#pratylenchus_log$predicted = exp(pratylenchus_log$predicted)
+
+pratylenchus_log$predicted = (pratylenchus_log$predicted/(1 - pratylenchus_log$predicted))
+
+pratylenchus_log01_tillage<-pratylenchus_log$predicted[pratylenchus_log$tillage_corrigido==1]
+pratylenchus_log02_tillage<-pratylenchus_log$predicted[pratylenchus_log$tillage_corrigido==2]
+
+pratylenchus_log01_tillage = mean(pratylenchus_log01_tillage)
+pratylenchus_log02_tillage = mean(pratylenchus_log02_tillage)
+
+odd_pratylenchus_tillage = c(pratylenchus_log01_tillage,pratylenchus_log02_tillage)
+
+
+odd_pratylenchus_tillage = as.data.frame(odd_pratylenchus_tillage)
+odd_pratylenchus_tillage$nematode = c("Pratylenchus","Pratylenchus")
+colnames(odd_pratylenchus_tillage) = c("odd","nematode")
+#odd_pratylenchus_tillage$odd = exp(odd_pratylenchus_tillage$odd)
+
+#----------------------------------------------------------
+
+#Rotylenchulus
+
+rotylenchulus_log$predicted = predict(rotyl_log, type = "response")
+#rotylenchulus_log$predicted = exp(rotylenchulus_log$predicted)
+
+rotylenchulus_log$predicted = (rotylenchulus_log$predicted/(1 - rotylenchulus_log$predicted))
+
+rotylenchulus_log01_tillage<-rotylenchulus_log$predicted[rotylenchulus_log$tillage_corrigido==1]
+rotylenchulus_log02_tillage<-rotylenchulus_log$predicted[rotylenchulus_log$tillage_corrigido==2]
+
+rotylenchulus_log01_tillage = mean(rotylenchulus_log01_tillage)
+rotylenchulus_log02_tillage = mean(rotylenchulus_log02_tillage)
+
+odd_rotylenchulus_tillage = c(rotylenchulus_log01_tillage,rotylenchulus_log02_tillage)
+
+
+odd_rotylenchulus_tillage = as.data.frame(odd_rotylenchulus_tillage)
+odd_rotylenchulus_tillage$nematode = c("Rotylenchulus","Rotylenchulus")
+colnames(odd_rotylenchulus_tillage) = c("odd","nematode")
+#odd_rotylenchulus_tillage$odd = exp(odd_rotylenchulus_tillage$odd)
+
+
+
+all_odd_tillage = rbind(odd_aphelenchoides_tillage,odd_aphelenchus_tillage,
+                        odd_criconematidae_tillage,odd_helicotylenchus_tillage,
+                        odd_pratylenchus_tillage,odd_rotylenchulus_tillage)
+  #all_odd_tillage$odd = exp(all_odd_tillage$odd)
+
+#----------------------------------------------------------
+
+odd_ratio_tillage = all_odd_tillage %>% 
+  group_by(nematode) %>% 
+  summarise(
+    n = n(),
+    ratio = odd[1]/odd[2],
+    #ratio_exp = exp(odd[1]/odd[2]),
+    mean = mean(odd),
+    sd = sd(odd),
+   se=sd/sqrt(n))%>% 
+  #group_by(nematode) %>% 
+ mutate(
+    lower_log = log(ratio) - 1.96 * se, # Calcula o limite inferior do intervalo de confiança na escala logarítmica
+    upper_log = log(ratio) + 1.96 * se, # Calcula o limite superior do intervalo de confiança na escala logarítmica
+    lower = plogis(lower_log), # Transforma o limite inferior para a escala linear (odds ratio)
+    upper = plogis(upper_log)  # Transforma o limite superior para a escala linear (odds ratio)
+  )
+
+
+
+odd_ratio_tillage$practice = c("tillage","tillage","tillage","tillage",
+                                "tillage","tillage")
+
+#----------------------------------------------------------
+
+tillage = odd_ratio_tillage %>% 
+  #filter(!nematode %in% c("Aphelenchoides","Helicotylenchus")) %>% 
+  ggplot(aes(nematode,ratio))+
+  geom_hline(yintercept=1, linetype="dashed", color = "black", size = 1)+
+  geom_pointrange(aes(ymin = ratio - lower, ymax = ratio + upper), color = "black", size = 1)+
+   theme_minimal()+
+  labs(x = "",
+       y = "Odd ratio")+
+   theme(text = element_text(size = 22))+
+  coord_flip()
+
+ggsave("odd_ratio_tillage.png", dpi = 600, bg = "white")
+```
+
+```{r}
+plot_grid(cropping,tillage, labels = c("A", "B"), ncol = 2,
+          label_size = 25)
+
+ggsave("odd_ratio_cropping_tillage2.png", dpi = 600, bg = "white", width = 18, height = 10)
+```
+
+### By soil (2x6)
+
+```{r}
+
+
+#Helicotylenchus
+helicotylenchus_log$predicted = predict(heli_log, type = "response")
+helicotylenchus_log$predicted = (helicotylenchus_log$predicted/(1 - helicotylenchus_log$predicted))
+
+helicotylenchus_log01<-helicotylenchus_log$predicted[helicotylenchus_log$soil_corrigido==2]
+helicotylenchus_log02<-helicotylenchus_log$predicted[helicotylenchus_log$soil_corrigido==6]
+
+helicotylenchus_log01 = mean(helicotylenchus_log01)
+helicotylenchus_log02 = mean(helicotylenchus_log02)
+
+
+odd_helicotylenchus = c(helicotylenchus_log01,helicotylenchus_log02)
+
+#logodd_diff<-s1/s2
+#odd_helicotylenchus<-exp(odd_helicotylenchus)
+
+odd_helicotylenchus = as.data.frame(odd_helicotylenchus)
+odd_helicotylenchus$nematode = c("Helicotylenchus","Helicotylenchus")
+colnames(odd_helicotylenchus) = c("odd","nematode")
+
+#----------------------------------------------------------
+
+#Aphelenchus
+
+aphelenchus_log$predicted = predict(aphel_log, type = "response")
+aphelenchus_log$predicted = (aphelenchus_log$predicted/(1 - aphelenchus_log$predicted))
+
+aphelenchus_log01<-aphelenchus_log$predicted[aphelenchus_log$soil_corrigido==2]
+aphelenchus_log02<-aphelenchus_log$predicted[aphelenchus_log$soil_corrigido==6]
+
+aphelenchus_log01 = mean(aphelenchus_log01)
+aphelenchus_log02 = mean(aphelenchus_log02)
+
+odd_aphelenchus = c(aphelenchus_log01,aphelenchus_log02)
+#odd_aphelenchus<-exp(odd_aphelenchus)
+
+odd_aphelenchus = as.data.frame(odd_aphelenchus)
+odd_aphelenchus$nematode = c("Aphelenchus","Aphelenchus")
+colnames(odd_aphelenchus) = c("odd","nematode")
+
+#----------------------------------------------------------
+
+#Aphelenchoides
+
+aphelenchoides_log$predicted = predict(aphels_log, type = "response")
+aphelenchoides_log$predicted = (aphelenchoides_log$predicted/(1 - aphelenchoides_log$predicted))
+
+aphelenchoides_log01<-aphelenchoides_log$predicted[aphelenchoides_log$soil_corrigido==2]
+aphelenchoides_log02<-aphelenchoides_log$predicted[aphelenchoides_log$soil_corrigido==6]
+
+aphelenchoides_log01 = mean(aphelenchoides_log01)
+aphelenchoides_log02 = mean(aphelenchoides_log02)
+
+odd_aphelenchoides = c(aphelenchoides_log01,aphelenchoides_log02)
+#odd_aphelenchoides<-exp(odd_aphelenchoides)
+
+odd_aphelenchoides = as.data.frame(odd_aphelenchoides)
+odd_aphelenchoides$nematode = c("Aphelenchoides","Aphelenchoides")
+colnames(odd_aphelenchoides) = c("odd","nematode")
+
+#----------------------------------------------------------
+
+#Criconematidae
+
+criconematidae_log$predicted = predict(crico_log, type = "response")
+criconematidae_log$predicted = (criconematidae_log$predicted/(1 - criconematidae_log$predicted))
+
+criconematidae_log01<-criconematidae_log$predicted[criconematidae_log$soil_corrigido==2]
+criconematidae_log02<-criconematidae_log$predicted[criconematidae_log$soil_corrigido==6]
+
+criconematidae_log01 = mean(criconematidae_log01)
+criconematidae_log02 = mean(criconematidae_log02)
+
+odd_criconematidae = c(criconematidae_log01,criconematidae_log02)
+#odd_criconematidae<-exp(odd_criconematidae)
+
+odd_criconematidae = as.data.frame(odd_criconematidae)
+odd_criconematidae$nematode = c("Criconematidae","Criconematidae")
+colnames(odd_criconematidae) = c("odd","nematode")
+
+#----------------------------------------------------------
+
+#Pratylenchus
+
+pratylenchus_log$predicted = predict(praty_log, type = "response")
+pratylenchus_log$predicted = (pratylenchus_log$predicted/(1 - pratylenchus_log$predicted))
+
+pratylenchus_log01<-pratylenchus_log$predicted[pratylenchus_log$soil_corrigido==2]
+pratylenchus_log02<-pratylenchus_log$predicted[pratylenchus_log$soil_corrigido==6]
+
+pratylenchus_log01 = mean(pratylenchus_log01)
+pratylenchus_log02 = mean(pratylenchus_log02)
+
+odd_pratylenchus = c(pratylenchus_log01,pratylenchus_log02)
+#odd_pratylenchus<-exp(odd_pratylenchus)
+
+odd_pratylenchus = as.data.frame(odd_pratylenchus)
+odd_pratylenchus$nematode = c("Pratylenchus","Pratylenchus")
+colnames(odd_pratylenchus) = c("odd","nematode")
+
+#----------------------------------------------------------
+
+#Rotylenchulus
+
+rotylenchulus_log$predicted = predict(rotyl_log, type = "response")
+rotylenchulus_log$predicted = (rotylenchulus_log$predicted/(1 - rotylenchulus_log$predicted))
+
+rotylenchulus_log01<-rotylenchulus_log$predicted[rotylenchulus_log$soil_corrigido==2]
+rotylenchulus_log02<-rotylenchulus_log$predicted[rotylenchulus_log$soil_corrigido==6]
+
+rotylenchulus_log01 = mean(rotylenchulus_log01)
+rotylenchulus_log02 = mean(rotylenchulus_log02)
+
+odd_rotylenchulus = c(rotylenchulus_log01,rotylenchulus_log02)
+#odd_rotylenchulus<-exp(odd_rotylenchulus)
+
+odd_rotylenchulus = as.data.frame(odd_rotylenchulus)
+odd_rotylenchulus$nematode = c("Rotylenchulus","Rotylenchulus")
+colnames(odd_rotylenchulus) = c("odd","nematode")
+
+all_odd_02 = rbind(odd_aphelenchoides,odd_aphelenchus,odd_criconematidae,odd_helicotylenchus,
+                odd_pratylenchus,odd_rotylenchulus)
+
+#----------------------------------------------------------
+  
+odd_ratio_genus_02 = all_odd_02 %>% 
+  group_by(nematode) %>% 
+  summarise(
+    n = n(),
+    ratio = odd[1]/odd[2],
+    mean = mean(odd),
+    sd = sd(odd),
+   se=sd/sqrt(n))%>% 
+  #group_by(nematode) %>% 
+  mutate(
+    lower_log = log(ratio) - 1.96 * se, # Calcula o limite inferior do intervalo de confiança na escala logarítmica
+    upper_log = log(ratio) + 1.96 * se, # Calcula o limite superior do intervalo de confiança na escala logarítmica
+    lower = plogis(lower_log), # Transforma o limite inferior para a escala linear (odds ratio)
+    upper = plogis(upper_log)  # Transforma o limite superior para a escala linear (odds ratio)
+  )
+
+
+odd_ratio_genus_02$soil_region = c("2x6","2x6","2x6","2x6","2x6","2x6")
+odd_ratio_genus_02$soil_region = c("Argissolo|Latossolo","Argissolo|Latossolo",
+                                   "Argissolo|Latossolo","Argissolo|Latossolo",
+                                   "Argissolo|Latossolo","Argissolo|Latossolo")
+
+#----------------------------------------------------------
+
+ratio_02 = odd_ratio_genus_02 %>%  
+ # filter(!nematode == "Rotylenchulus") %>% 
+  ggplot(aes(nematode,ratio))+
+  geom_hline(yintercept=1, linetype="dashed", color = "black", size = 1)+
+  geom_pointrange(aes(ymin = ratio - lower, ymax = ratio + upper), color = "black", size = 0.7)+
+  theme_minimal()+
+  labs(x = "Morphological group",
+       y = "Odd ratio")+
+   theme(text = element_text(size = 22))+
+  coord_flip()
+
+  
+```
+
+### By soil (5x6)
+
+```{r}
+
+#Helicotylenchus
+helicotylenchus_log$predicted = predict(heli_log, type = "response")
+helicotylenchus_log$predicted = (helicotylenchus_log$predicted/(1 - helicotylenchus_log$predicted))
+
+helicotylenchus_log01<-helicotylenchus_log$predicted[helicotylenchus_log$soil_corrigido==5]
+helicotylenchus_log02<-helicotylenchus_log$predicted[helicotylenchus_log$soil_corrigido==6]
+
+helicotylenchus_log01 = mean(helicotylenchus_log01)
+helicotylenchus_log02 = mean(helicotylenchus_log02)
+
+
+odd_helicotylenchus = c(helicotylenchus_log01,helicotylenchus_log02)
+
+#odd_helicotylenchus<-exp(odd_helicotylenchus)
+
+odd_helicotylenchus = as.data.frame(odd_helicotylenchus)
+odd_helicotylenchus$nematode = c("Helicotylenchus","Helicotylenchus")
+colnames(odd_helicotylenchus) = c("odd","nematode")
+
+#----------------------------------------------------------
+
+#Aphelenchus
+
+aphelenchus_log$predicted = predict(aphel_log, type = "response")
+aphelenchus_log$predicted = (aphelenchus_log$predicted/(1 - aphelenchus_log$predicted))
+
+aphelenchus_log01<-aphelenchus_log$predicted[aphelenchus_log$soil_corrigido==5]
+aphelenchus_log02<-aphelenchus_log$predicted[aphelenchus_log$soil_corrigido==6]
+
+aphelenchus_log01 = mean(aphelenchus_log01)
+aphelenchus_log02 = mean(aphelenchus_log02)
+
+odd_aphelenchus = c(aphelenchus_log01,aphelenchus_log02)
+#odd_aphelenchus<-exp(odd_aphelenchus)
+
+odd_aphelenchus = as.data.frame(odd_aphelenchus)
+odd_aphelenchus$nematode = c("Aphelenchus","Aphelenchus")
+colnames(odd_aphelenchus) = c("odd","nematode")
+
+#----------------------------------------------------------
+
+#Aphelenchoides
+
+aphelenchoides_log$predicted = predict(aphels_log, type = "response")
+aphelenchoides_log$predicted = (aphelenchoides_log$predicted/(1 - aphelenchoides_log$predicted))
+
+aphelenchoides_log01<-aphelenchoides_log$predicted[aphelenchoides_log$soil_corrigido==5]
+aphelenchoides_log02<-aphelenchoides_log$predicted[aphelenchoides_log$soil_corrigido==6]
+
+aphelenchoides_log01 = mean(aphelenchoides_log01)
+aphelenchoides_log02 = mean(aphelenchoides_log02)
+
+odd_aphelenchoides = c(aphelenchoides_log01,aphelenchoides_log02)
+#odd_aphelenchoides<-exp(odd_aphelenchoides)
+
+odd_aphelenchoides = as.data.frame(odd_aphelenchoides)
+odd_aphelenchoides$nematode = c("Aphelenchoides","Aphelenchoides")
+colnames(odd_aphelenchoides) = c("odd","nematode")
+
+#----------------------------------------------------------
+
+#Criconematidae
+
+criconematidae_log$predicted = predict(crico_log, type = "response")
+criconematidae_log$predicted = (criconematidae_log$predicted/(1 - criconematidae_log$predicted))
+
+criconematidae_log01<-criconematidae_log$predicted[criconematidae_log$soil_corrigido==5]
+criconematidae_log02<-criconematidae_log$predicted[criconematidae_log$soil_corrigido==6]
+
+criconematidae_log01 = mean(criconematidae_log01)
+criconematidae_log02 = mean(criconematidae_log02)
+
+odd_criconematidae = c(criconematidae_log01,criconematidae_log02)
+#odd_criconematidae<-exp(odd_criconematidae)
+
+odd_criconematidae = as.data.frame(odd_criconematidae)
+odd_criconematidae$nematode = c("Criconematidae","Criconematidae")
+colnames(odd_criconematidae) = c("odd","nematode")
+
+#----------------------------------------------------------
+
+#Pratylenchus
+
+pratylenchus_log$predicted = predict(praty_log, type = "response")
+pratylenchus_log$predicted = (pratylenchus_log$predicted/(1 - pratylenchus_log$predicted))
+
+pratylenchus_log01<-pratylenchus_log$predicted[pratylenchus_log$soil_corrigido==5]
+pratylenchus_log02<-pratylenchus_log$predicted[pratylenchus_log$soil_corrigido==6]
+
+pratylenchus_log01 = mean(pratylenchus_log01)
+pratylenchus_log02 = mean(pratylenchus_log02)
+
+odd_pratylenchus = c(pratylenchus_log01,pratylenchus_log02)
+#odd_pratylenchus<-exp(odd_pratylenchus)
+
+odd_pratylenchus = as.data.frame(odd_pratylenchus)
+odd_pratylenchus$nematode = c("Pratylenchus","Pratylenchus")
+colnames(odd_pratylenchus) = c("odd","nematode")
+
+#----------------------------------------------------------
+
+#Rotylenchulus
+
+rotylenchulus_log$predicted = predict(rotyl_log, type = "response")
+rotylenchulus_log$predicted = (rotylenchulus_log$predicted/(1 - rotylenchulus_log$predicted))
+
+rotylenchulus_log01<-rotylenchulus_log$predicted[rotylenchulus_log$soil_corrigido==5]
+rotylenchulus_log02<-rotylenchulus_log$predicted[rotylenchulus_log$soil_corrigido==6]
+
+rotylenchulus_log01 = mean(rotylenchulus_log01)
+rotylenchulus_log02 = mean(rotylenchulus_log02)
+
+odd_rotylenchulus = c(rotylenchulus_log01,rotylenchulus_log02)
+#odd_rotylenchulus<-exp(odd_rotylenchulus)
+
+odd_rotylenchulus = as.data.frame(odd_rotylenchulus)
+odd_rotylenchulus$nematode = c("Rotylenchulus","Rotylenchulus")
+colnames(odd_rotylenchulus) = c("odd","nematode")
+
+all_odd_05 = rbind(odd_aphelenchoides,odd_aphelenchus,odd_criconematidae,odd_helicotylenchus,
+                odd_pratylenchus,odd_rotylenchulus)
+
+#----------------------------------------------------------
+  
+odd_ratio_genus_05 = all_odd_05 %>% 
+  group_by(nematode) %>% 
+ summarise(
+    n = n(),
+    ratio = odd[1]/odd[2],
+    ratio_exp = exp(odd[1]/odd[2]),
+    mean = mean(odd),
+    sd = sd(odd),
+   se=sd/sqrt(n))%>% 
+  #group_by(nematode) %>% 
+    mutate(
+    lower_log = log(ratio) - 1.96 * se, # Calcula o limite inferior do intervalo de confiança na escala logarítmica
+    upper_log = log(ratio) + 1.96 * se, # Calcula o limite superior do intervalo de confiança na escala logarítmica
+    lower = plogis(lower_log), # Transforma o limite inferior para a escala linear (odds ratio)
+    upper = plogis(upper_log)  # Transforma o limite superior para a escala linear (odds ratio)
+  )
+
+odd_ratio_genus_05$soil_region = c("5x6","5x6","5x6","5x6","5x6","5x6")
+odd_ratio_genus_05$soil_region = c("Cambissolo|Latossolo","Cambissolo|Latossolo","Cambissolo|Latossolo",
+                                   "Cambissolo|Latossolo","Cambissolo|Latossolo",
+                                   "Cambissolo|Latossolo") #comparação - thais
+
+#----------------------------------------------------------
+
+ratio_05 = odd_ratio_genus_05 %>% 
+ # filter(!nematode == "Rotylenchulus") %>% 
+  ggplot(aes(nematode,ratio))+
+  geom_hline(yintercept=1, linetype="dashed", color = "black", size = 1)+
+  geom_pointrange(aes(ymin = ratio - lower, ymax = ratio + upper), color = "black", size = 0.7)+
+  theme_minimal()+
+  labs(x = "",
+       y = "Odd ratio")+
+  theme(text = element_text(size = 22))+
+        #axis.text.y = element_blank())+
+    coord_flip()
+
+```
+
+### Plotting
+
+```{r}
+ plot_grid(ratio_02,ratio_05, labels = c("A", "B"), ncol = 2,
+          label_size = 25)
+
+ggsave("odd_ratio_soil_mixed.png",dpi = 600, bg = "white", width = 18, height = 10)
+```
+
+## Altitude
+
+```{r}
+
+helicotylenchus_log$prob = predict(heli_log, type = "response")
+criconematidae_log$prob = predict(crico_log, type = "response")
+aphelenchus_log$prob = predict(aphel_log, type = "response")
+aphelenchoides_log$prob = predict(aphels_log, type = "response")
+pratylenchus_log$prob = predict(praty_log, type = "response")
+rotylenchulus_log$prob = predict(rotyl_log, type = "response")
+#exp(summary(heli_log))
+
+
+altitude = rbind(helicotylenchus_log,criconematidae_log,aphelenchus_log,aphelenchoides_log,
+                 pratylenchus_log,rotylenchulus_log)
+ altitude %>% 
+   filter(altitute < 400)
+
+
+altitude1 <- altitude %>%
+  mutate(altitute = case_when(altitute >= 0 ~ altitute,
+                                altitute == NA_character_ ~ 0 )) %>% 
+  mutate(altitude_range = case_when(
+    altitute <= 400 ~ "280 to 400",
+    altitute <= 600  ~ "401 to 600",
+    altitute <= 800 ~ "601 to 800",
+    altitute <= 1000 ~ "801 to 1000",
+    altitute > 1000 ~"Above 1001"
+  ))
+
+altitude_genus = altitude1 %>% 
+    group_by(genus,altitude_range) %>% 
+  summarise(
+    
+    prob = prob)
+   
+
+
+point = altitude1 %>% 
+    group_by(genus,altitude_range) %>% 
+  summarise(
+    
+    probi = mean(prob),
+    sd = sd(prob)
+   
+  ) %>%
+  group_by(genus,altitude_range) %>% 
+  summarise(
+   prob = mean(probi),
+   sd = sd
+   )
+ 
+#write_xlsx(point,"THAIS/point.xlsx")
+
+
+point %>% 
+    ggplot(aes(altitude_range,prob))+
+  geom_jitter(data = altitude_genus, alpha = .2, size = 5, width = .03, color = "gray")+
+  #geom_violin(data = altitude_genus, alpha = .7, width = .03, fill = "grey", color = "grey")+
+  geom_pointrange(aes(ymin = prob- sd, ymax = prob + sd), color = "black", size = 1)+
+  theme_minimal()+
+  facet_wrap(~genus)+
+  labs(x= "Range altitude (m)",
+       y = "Probability")+
+  theme(text = element_text(size = 18),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+  
+#ggsave("prob_altitude.png", bg = "white", width = 12, height = 8)
+```
+
+## Overall
+
+```{r}
+altitude_genus = altitude1 %>% 
+    group_by(genus,altitude_range,sand,clay,ph,cropping,soil,tillage) %>% 
+  summarise(
+    
+    prob = prob
+   
+  )
+
+#write_xlsx(altitude_genus,"THAIS/altitude_genus.xlsx")
+
+```
+
+## Probability of incidence
+
+### By tillage and sand
+
+```{r}
+altitude_genus %>% 
+  #filter(genus == "Aphelenchus") %>% 
+  ggplot(aes(sand,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "gray", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F, color = "black")+
+ # geom_line(data = gg2, aes(silt = x, y = ymin), size = 0.02) +
+  #  geom_line(data = gg2, aes(silt = x, y = ymax), size = 0.02)+
+  facet_wrap(~genus+tillage, nrow = 3)+
+  theme_minimal()+
+  labs(x = "Sand",
+       y = "Probability")+
+  theme(text = element_text(size = 18))
+
+ggsave("probability_sand_tillage_all_genus.png", dpi = 600, width = 14, height = 8, bg = "white")
+```
+
+### By tillage and  pH
+
+```{r}
+altitude_genus %>% 
+  #filter(genus == "Aphelenchus") %>% 
+  ggplot(aes(ph,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "gray", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F, color = "black")+
+ # geom_line(data = gg2, aes(silt = x, y = ymin), size = 0.02) +
+  #  geom_line(data = gg2, aes(silt = x, y = ymax), size = 0.02)+
+  facet_wrap(~genus+tillage, nrow = 3)+
+  theme_minimal()+
+  labs(x = "pH gradient",
+       y = "Probabilitiy")+
+  theme(text = element_text(size = 18))
+
+ggsave("probability_ph_tillage_all_genus.png", dpi = 600, width = 14, height = 8,bg = "white")
+```
+
+### By tillage and clay
+
+```{r}
+altitude_genus %>% 
+  #filter(genus == "Aphelenchus") %>% 
+  ggplot(aes(clay,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "gray", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F, color = "black")+
+ # geom_line(data = gg2, aes(silt = x, y = ymin), size = 0.02) +
+  #  geom_line(data = gg2, aes(silt = x, y = ymax), size = 0.02)+
+  facet_wrap(~genus+tillage, nrow = 3)+
+  theme_minimal()+
+  labs(x = "Clay",
+       y = "Probability")+
+  theme(text = element_text(size = 18))
+
+ggsave("probability_clay_tillage_all_genus.png", dpi = 600, width = 14, height = 8, bg = "white")
+```
+
+### By sand and soil type
+
+```{r}
+altitude_genus %>% 
+  #filter(genus == "Aphelenchus") %>% 
+  ggplot(aes(sand,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "gray", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F,color = "black")+
+ # geom_line(data = gg2, aes(silt = x, y = ymin), size = 0.02) +
+  #  geom_line(data = gg2, aes(silt = x, y = ymax), size = 0.02)+
+  facet_wrap(~genus+soil, nrow = 3)+
+  theme_minimal()+
+  labs(x = "Sand",
+       y = "Probability")+
+  theme(text = element_text(size = 18))
+
+ggsave("probability_soil_all_genus.png", dpi = 600, width = 14,height = 8, bg = "white")
+```
+
+### By cropping and sand
+
+```{r}
+altitude_genus %>% 
+  #filter(genus == "Aphelenchus") %>% 
+  ggplot(aes(sand,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "gray", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F, color = "black")+
+ # geom_line(data = gg2, aes(silt = x, y = ymin), size = 0.02) +
+  #  geom_line(data = gg2, aes(silt = x, y = ymax), size = 0.02)+
+  facet_wrap(~genus+cropping, nrow = 3)+
+  theme_minimal()+
+  labs(x = "Sand",
+       y = "Probability")+
+  theme(text = element_text(size = 18))
+
+ggsave("probability_cropping_sand_all_genus.png", dpi = 600, width = 14, height = 8, bg = "white")
+```
+
+### By cropping and pH
+
+```{r}
+altitude_genus %>% 
+  #filter(genus == "Aphelenchus") %>% 
+  ggplot(aes(ph,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "gray", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F, color = "black",fullrange = T)+
+ # geom_line(data = gg2, aes(silt = x, y = ymin), size = 0.02) +
+  #  geom_line(data = gg2, aes(silt = x, y = ymax), size = 0.02)+
+  facet_wrap(~genus+cropping, nrow = 3)+
+  theme_minimal()+
+  labs(x = "pH gradient",
+       y = "Probability")+
+  theme(text = element_text(size = 18))
+
+ggsave("probability_cropping_ph_all_genus.png", dpi = 600, width = 14,height = 6, bg = "white")
+```
+
+### By sand
+
+```{r}
+altitude_genus %>% 
+  #filter(!genus %in% c("Aphelenchus","Criconematidae","Rotylenchulus")) %>% 
+  ggplot(aes(sand,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "gray", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F, color = "black")+
+ # geom_line(data = gg2, aes(silt = x, y = ymin), size = 0.02) +
+  #  geom_line(data = gg2, aes(silt = x, y = ymax), size = 0.02)+
+  facet_wrap(~genus, nrow = 2)+
+  theme_minimal()+
+  labs(x = "Sand",
+       y = "Probability")+
+  theme(text = element_text(size = 18))
+
+ggsave("probability_sand_genus.png", dpi = 600, width = 14, height = 6, bg = "white")
+```
+
+### By pH
+
+```{r}
+altitude_genus %>% 
+  #filter(genus == "Aphelenchus") %>% 
+  ggplot(aes(ph,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "gray", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F, color = "black")+
+ # geom_line(data = gg2, aes(silt = x, y = ymin), size = 0.02) +
+  #  geom_line(data = gg2, aes(silt = x, y = ymax), size = 0.02)+
+  facet_wrap(~genus, nrow = 2)+
+  theme_minimal()+
+  labs(x = "pH",
+       y = "Probability")+
+  theme(text = element_text(size = 18))
+
+ggsave("probability_ph_genus.png", dpi = 600, width = 14,height = 6, bg = "white")
+```
+
+### By clay
+
+```{r}
+altitude_genus %>% 
+ #filter(genus == "Aphelenchus") %>% 
+  ggplot(aes(clay,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "gray", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F, color = "black")+
+ # geom_line(data = gg2, aes(silt = x, y = ymin), size = 0.02) +
+  #  geom_line(data = gg2, aes(silt = x, y = ymax), size = 0.02)+
+  facet_wrap(~genus, nrow = 2)+
+  theme_minimal()+
+  labs(x = "Clay",
+       y = "Probability")+
+  theme(text = element_text(size = 18))
+
+ggsave("probability_clay_genus.png", dpi = 600, width = 14,height = 6, bg = "white")
+```
+
+
+# Abundance - Ordinal regression
+
+```{r}
+#Modificado
+population = gsheet2tbl("https://docs.google.com/spreadsheets/d/1vtTIBgpJ1qqdPp3MjIPUEYASMj_lUSZR/edit?usp=sharing&ouid=112586075609758894128&rtpof=true&sd=true")
+
+ population$quantity = 6.66*population$quantity 
+ population$quantity =as.integer(population$quantity)
+ population$quantity =as.numeric(population$quantity)
+
+#population[,10] = NULL
+ 
+```
+
+
+## By Helicotylenchus
+
+```{r}
+#library(MASS)
+library(ordinal)
+
+helicotylenchus_ordinal = population %>% 
+  filter(genus == "Helicotylenchus") %>%
+  filter(soil %in% c("2","5","6")) %>% 
+   group_by(samples,soil,altitute,sand,clay,ph,ec,cropping,tillage) %>% 
+  summarise(
+    quantity = sum(quantity)
+  )
+
+helicotylenchus_ordinal$ph = as.numeric(helicotylenchus_ordinal$ph)
+helicotylenchus_ordinal <- helicotylenchus_ordinal %>%
+  mutate(quantity = case_when(quantity >= 0 ~ quantity,
+                                quantity == NA_character_ ~ 0 )) %>% 
+  mutate(risk_category = case_when(
+    quantity == 0 ~ "0",
+    quantity <= 75  ~ "1",
+    quantity <= 150 ~ "2",
+    quantity <= 300 ~ "2",
+    quantity <= 500 ~"2",
+    quantity > 500 ~"2"
+  ))
+
+helicotylenchus_ordinal$risk_category = as.factor(helicotylenchus_ordinal$risk_category)
+#helicotylenchus_ordinal$tillage = as.character(helicotylenchus_ordinal$tillage)
+#helicotylenchus_ordinal$soil = as.character(helicotylenchus_ordinal$soil)
+#helicotylenchus_ordinal$cropping = as.character(helicotylenchus_ordinal$cropping)
+
+helic_ordinal = clm(risk_category ~ tillage + cropping + soil + sand + clay  +
+                       ph,
+                     data = helicotylenchus_ordinal,link = "logit")
+
+
+helic_predicted =cbind(helicotylenchus_ordinal, predict(helic_ordinal, helicotylenchus_ordinal, type = "prob")$fit)
+colnames(helic_predicted) = c("samples","soil","altitute","sand","clay","ph","ec",
+                              "cropping","tillage","quantity","risk_category",
+                              "prob")
+#Summary
+
+
+coef(summary(helic_ordinal))
+coef(helic_ordinal)
+
+#Odd calculate
+helic_predicted = helic_predicted %>% 
+  group_by(samples,soil,altitute,sand,clay,ph,cropping,tillage,quantity,
+         risk_category,prob) %>% 
+  summarise(
+    odd = (prob/(1-prob)
+  ))
+
+anova(helic_ordinal, type="III")
+confint(helic_ordinal, type = c("profile"),level = .95)
+
+#Wald X²
+
+waldtest(helic_ordinal, term = 1)
+waldtest(helic_ordinal, term = 2)
+waldtest(helic_ordinal, term = 3)
+waldtest(helic_ordinal, term = 4)
+waldtest(helic_ordinal, term = 5)
+waldtest(helic_ordinal, term = 6)
+#waldtest(helic_ordinal, term = 7)
+
+
+#LRT
+
+lrtest(helic_ordinal)
+
+
+
+#plogis(helic_ordinal)
+
+
+#Coefficients
+
+coef(summary(helic_ordinal))
+
+```
+
+### Cross-validation
+
+```{r}
+library(ordinalNet)
+
+risk_helicotylenchus = helicotylenchus_ordinal$risk_category
+class(risk_helicotylenchus)
+
+helicotylenchus_ordinal_cv = helicotylenchus_ordinal
+
+helicotylenchus_ordinal_cv["samples"] = NULL
+helicotylenchus_ordinal_cv["ec"] = NULL
+helicotylenchus_ordinal_cv["altitute"] = NULL
+helicotylenchus_ordinal_cv["quantity"] = NULL
+helicotylenchus_ordinal_cv["risk_category"] = NULL
+
+x_ordinal_helicotylenchus = helicotylenchus_ordinal_cv
+x_ordinal_helicotylenchus = as.matrix(x_ordinal_helicotylenchus)
+class(x_ordinal_helicotylenchus)
+
+helicotylenchus_cv = ordinalNetCV(x_ordinal_helicotylenchus, risk_helicotylenchus,
+                                  tuneMethod=c("cvMisclass"),family = "cumulative", link = "logit",
+                                  lambdaMinRatio = 1e-04,printProgress = FALSE)
+summary(helicotylenchus_cv)
+colMeans(summary(helicotylenchus_cv))
+
+```
+
+Helicotylenchus model diagnostic (NÃO ESTÁ AJUSTANDO IGUAL O DE INCIDÊNCIA)
+
+```{r,eval = FALSE, echo = TRUE}
+#Model log with best
+helic_ordinal = clm(risk_category ~ tillage + cropping + soil + sand + clay  +
+                       ph,
+                     data = helicotylenchus_ordinal,link = "logit")
+
+
+summary(helic_ordinal)
+
+helic_predicted1 = helic_predicted |> 
+  filter(!risk_category == 2)
+
+pred_helicotylenchus_ordinal <- helic_predicted1$prob
+
+
+  
+
+
+#Better thresholds
+dat_helicotylenchus <- data.frame(1,helic_predicted1$risk_category, pred_helicotylenchus_ordinal)
+dat_helicotylenchus[dat_helicotylenchus$helic_predicted1.risk_category== "0",c("risk")] <- 0
+dat_helicotylenchus[dat_helicotylenchus$helic_predicted1.risk_category== "1",c("risk")] <-1
+dat_helicotylenchus["helic_predicted1.risk_category"] = NULL
+
+optimal.thresholds(dat_helicotylenchus)
+
+# Confusion matrix with the MAXsen+spe threshold
+confusionMatrix(data = as.factor(as.numeric(pred_helicotylenchus_ordinal > 0.9)),  mode= "everything",  reference = as.factor(helicotylenchus_log$incidence))
+
+
+#Plot
+auc.roc.plot(dat_helicotylenchus)
+calibration.plot(dat_helicotylenchus)
+
+error.threshold.plot(dat_helicotylenchus, opt.methods = 3) #takes a single model and plots the sensitivity and specificity as a function of threshold. 
+pcc(cmx(dat_helicotylenchus), st.dev = TRUE) #calculates the percent correctly classified and (optionally) the associated standard deviation from a confusion matrix.
+
+presence.absence.accuracy(dat_helicotylenchus,threshold=.9,st.dev=FALSE) #Calculates five accuracy measures (pcc, sensitivity, specificity, Kappa, and AUC)
+presence.absence.summary(dat_helicotylenchus) #Produces four types of Presence/Absence accuracy plots for a single set of model Predictions
+
+roc_helicotylenchus <- roc.plot.calculate(dat_helicotylenchus) #data frame
+
+roc_helicotylenchus |> 
+  ggplot(aes(threshold, sensitivity))+
+  geom_line()+
+  geom_line(aes(threshold, specificity))+
+  geom_line(aes(threshold, Kappa))
+
+
+#LOOCV
+acc_helicotylenchus <- NULL
+for(i in 1:nrow(helicotylenchus_log))
+{
+    # Train-test splitting
+    # 499 samples -> fitting
+    # 1 sample -> testing
+    train <- helicotylenchus_log[-i,]
+    test <- helicotylenchus_log[i,]
+    
+    # Fitting
+    model <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = helicotylenchus_log,
+                family = binomial(link = "logit"))
+    
+    # Predict results
+    results_prob <- predict(model,test,type='response')
+    
+    # If prob > 0.5 then 1, else 0
+    results <- ifelse(results_prob > 0.9,1,0)
+    
+    # Actual answers
+    answers <- test$incidence
+    
+    # Calculate accuracy
+    misClasificError <- mean(answers != results)
+    
+    # Collecting results
+    acc_helicotylenchus[i] <- 1-misClasificError
+}
+
+# Average accuracy of the model
+mean(acc_helicotylenchus)
+
+
+
+```
+
+### Odd ratio
+
+```{r}
+
+#Soil 2 x 6
+
+helicotylenchus_log01_ordinal<-helic_predicted$odd[helic_predicted$soil==2]
+helicotylenchus_log02_ordinal<-helic_predicted$odd[helic_predicted$soil==6]
+
+helicotylenchus_log01_ordinal = mean(helicotylenchus_log01_ordinal)
+helicotylenchus_log02_ordinal = mean(helicotylenchus_log02_ordinal)
+
+
+odd_helicotylenchus_ordinal= c(helicotylenchus_log01_ordinal,helicotylenchus_log02_ordinal)
+#odd_helicotylenchus_ordinal = exp(odd_helicotylenchus_ordinal)
+
+odd_helicotylenchus_ordinal = as.data.frame(odd_helicotylenchus_ordinal)
+odd_helicotylenchus_ordinal$nematode = c("Helicotylenchus","Helicotylenchus")
+odd_helicotylenchus_ordinal$comparation = c("2x6","2x6")
+colnames(odd_helicotylenchus_ordinal) = c("odd","nematode","comparation")
+
+soil02_helicotylenchus = odd_helicotylenchus_ordinal
+
+
+#Soil 5x6
+
+helicotylenchus_log01_ordinal<-helic_predicted$odd[helic_predicted$soil==5]
+helicotylenchus_log02_ordinal<-helic_predicted$odd[helic_predicted$soil==6]
+
+helicotylenchus_log01_ordinal = mean(helicotylenchus_log01_ordinal)
+helicotylenchus_log02_ordinal = mean(helicotylenchus_log02_ordinal)
+
+
+odd_helicotylenchus_ordinal= c(helicotylenchus_log01_ordinal,helicotylenchus_log02_ordinal)
+#odd_helicotylenchus_ordinal = exp(odd_helicotylenchus_ordinal)
+
+odd_helicotylenchus_ordinal = as.data.frame(odd_helicotylenchus_ordinal)
+odd_helicotylenchus_ordinal$nematode = c("Helicotylenchus","Helicotylenchus")
+odd_helicotylenchus_ordinal$comparation = c("5x6","5x6")
+colnames(odd_helicotylenchus_ordinal) = c("odd","nematode","comparation")
+
+soil05_helicotylenchus = odd_helicotylenchus_ordinal
+
+#Tillage 1x2
+
+helicotylenchus_log01_ordinal<-helic_predicted$odd[helic_predicted$tillage==1]
+helicotylenchus_log02_ordinal<-helic_predicted$odd[helic_predicted$tillage==2]
+
+helicotylenchus_log01_ordinal = mean(helicotylenchus_log01_ordinal)
+helicotylenchus_log02_ordinal = mean(helicotylenchus_log02_ordinal)
+
+
+odd_helicotylenchus_ordinal= c(helicotylenchus_log01_ordinal,helicotylenchus_log02_ordinal)
+#odd_helicotylenchus_ordinal = exp(odd_helicotylenchus_ordinal)
+
+odd_helicotylenchus_ordinal = as.data.frame(odd_helicotylenchus_ordinal)
+odd_helicotylenchus_ordinal$nematode = c("Helicotylenchus","Helicotylenchus")
+odd_helicotylenchus_ordinal$comparation = c("tillage","tillage")
+colnames(odd_helicotylenchus_ordinal) = c("odd","nematode","comparation")
+
+tillage_helicotylenchus = odd_helicotylenchus_ordinal
+
+#Cropping 1x2
+
+helicotylenchus_log01_ordinal<-helic_predicted$odd[helic_predicted$cropping==1]
+helicotylenchus_log02_ordinal<-helic_predicted$odd[helic_predicted$cropping==2]
+
+helicotylenchus_log01_ordinal = mean(helicotylenchus_log01_ordinal)
+helicotylenchus_log02_ordinal = mean(helicotylenchus_log02_ordinal)
+
+
+odd_helicotylenchus_ordinal= c(helicotylenchus_log01_ordinal,helicotylenchus_log02_ordinal)
+#odd_helicotylenchus_ordinal = exp(odd_helicotylenchus_ordinal)
+
+odd_helicotylenchus_ordinal = as.data.frame(odd_helicotylenchus_ordinal)
+odd_helicotylenchus_ordinal$nematode = c("Helicotylenchus","Helicotylenchus")
+odd_helicotylenchus_ordinal$comparation = c("cropping","cropping")
+colnames(odd_helicotylenchus_ordinal) = c("odd","nematode","comparation")
+
+cropping_helicotylenchus = odd_helicotylenchus_ordinal
+
+all_odd_helicotylenchus= rbind(soil02_helicotylenchus,soil05_helicotylenchus,
+                               cropping_helicotylenchus,
+                               tillage_helicotylenchus)
+
+all_odd_ratio_helicotylenchus = all_odd_helicotylenchus %>% 
+  group_by(comparation) %>% 
+    summarise(
+    n = n(),
+    ratio = odd[1]/odd[2],
+    ratio_exp =  exp(odd[1]/odd[2]),
+    mean = mean(odd),
+    sd = sd(odd),
+   se=sd/sqrt(n)) %>% 
+  group_by(comparation) %>% 
+  mutate(
+   lower = (ratio - 1.96 * se),
+   upper = (ratio + 1.96 * se))
+
+coef(summary(helic_ordinal))
+```
+
+## By Pratylenchus
+
+```{r}
+#Pratylenchus
+
+pratylenchus_ordinal = population %>% 
+  filter(genus == "Pratylenchus") %>% 
+  filter(soil %in% c("2","5","6")) %>% 
+   group_by(samples,soil,altitute,sand,clay,ph,ec,cropping,tillage) %>% 
+  summarise(
+    quantity = sum(quantity)
+  )
+pratylenchus_ordinal$ph = as.numeric(pratylenchus_ordinal$ph)
+
+pratylenchus_ordinal <- pratylenchus_ordinal %>%
+  mutate(quantity = case_when(quantity >= 0 ~ quantity,
+                                quantity == NA_character_ ~ 0 )) %>% 
+  mutate(risk_category = case_when(
+    quantity == 0 ~ "0",
+    quantity <= 10  ~ "1",
+    quantity <= 25 ~ "2",
+    quantity <= 50 ~ "2",
+    quantity <= 100 ~"2",
+    quantity > 100 ~ "2"
+  ))
+
+pratylenchus_ordinal$risk_category = as.factor(pratylenchus_ordinal$risk_category)
+#pratylenchus_ordinal$tillage = as.character(pratylenchus_ordinal$tillage)
+#pratylenchus_ordinal$soil = as.character(pratylenchus_ordinal$soil)
+#pratylenchus_ordinal$cropping = as.character(pratylenchus_ordinal$cropping)
+
+praty_ordinal = clm(risk_category ~ tillage + cropping + soil + sand + clay  +
+                       ph,
+                     data = pratylenchus_ordinal,link = "logit")
+
+
+
+praty_predicted =cbind(pratylenchus_ordinal, predict(praty_ordinal, pratylenchus_ordinal, type = "prob")$fit)
+colnames(praty_predicted) = c("samples","soil","altitute","sand","clay","ph","ec",
+                              "cropping","tillage","quantity","risk_category",
+                              "prob")
+
+
+#Summary
+
+exp(coef(summary(praty_ordinal)))
+coef(summary(praty_ordinal))
+coef(praty_ordinal)
+
+anova(praty_ordinal, type="III")
+confint(praty_ordinal, type = c("profile"),level = .95)
+
+
+#Odd
+
+praty_predicted = praty_predicted %>% 
+  group_by(samples,soil,altitute,sand,clay,ph,cropping,tillage,quantity,
+         risk_category,prob) %>% 
+  summarise(
+    odd = (prob/(1-prob)
+  ))
+
+#Wald X²
+
+waldtest(praty_ordinal, term = 1)
+waldtest(praty_ordinal, term = 2)
+waldtest(praty_ordinal, term = 3)
+waldtest(praty_ordinal, term = 4)
+waldtest(praty_ordinal, term = 5)
+waldtest(praty_ordinal, term = 6)
+#waldtest(praty_ordinal, term = 7)
+#waldtest(praty_ordinal, term = 8)
+
+#LRT
+
+lrtest(praty_ordinal)
+
+```
+
+### Cross-validation
+
+```{r}
+
+risk_pratylenchus = pratylenchus_ordinal$risk_category
+class(risk_pratylenchus)
+
+pratylenchus_ordinal_cv = pratylenchus_ordinal
+
+pratylenchus_ordinal_cv["samples"] = NULL
+pratylenchus_ordinal_cv["ec"] = NULL
+pratylenchus_ordinal_cv["altitute"] = NULL
+pratylenchus_ordinal_cv["quantity"] = NULL
+pratylenchus_ordinal_cv["risk_category"] = NULL
+
+x_ordinal_pratylenchus = pratylenchus_ordinal_cv
+x_ordinal_pratylenchus = as.matrix(x_ordinal_pratylenchus)
+class(x_ordinal_pratylenchus)
+
+pratylenchus_cv = ordinalNetCV(x_ordinal_pratylenchus, risk_pratylenchus,family = "cumulative", link = "logit",
+                                  tuneMethod=c("cvMisclass"),lambdaMinRatio = 1e-04,printProgress = FALSE)
+summary(pratylenchus_cv)
+colMeans(summary(pratylenchus_cv))
+
+```
+
+### Odd ratio
+
+```{r}
+
+#Soil 2 x 6
+
+pratylenchus_log01_ordinal<-praty_predicted$odd[praty_predicted$soil==2]
+pratylenchus_log02_ordinal<-praty_predicted$odd[praty_predicted$soil==6]
+
+pratylenchus_log01_ordinal = mean(pratylenchus_log01_ordinal)
+pratylenchus_log02_ordinal = mean(pratylenchus_log02_ordinal)
+
+
+odd_pratylenchus_ordinal= c(pratylenchus_log01_ordinal,pratylenchus_log02_ordinal)
+
+odd_pratylenchus_ordinal = as.data.frame(odd_pratylenchus_ordinal)
+odd_pratylenchus_ordinal$nematode = c("Pratylenchus","Pratylenchus")
+odd_pratylenchus_ordinal$comparation = c("2x6","2x6")
+colnames(odd_pratylenchus_ordinal) = c("odd","nematode","comparation")
+
+soil02_pratylenchus = odd_pratylenchus_ordinal
+
+
+#Soil 5x6
+
+pratylenchus_log01_ordinal<-praty_predicted$odd[praty_predicted$soil==5]
+pratylenchus_log02_ordinal<-praty_predicted$odd[praty_predicted$soil==6]
+
+pratylenchus_log01_ordinal = mean(pratylenchus_log01_ordinal)
+pratylenchus_log02_ordinal = mean(pratylenchus_log02_ordinal)
+
+
+odd_pratylenchus_ordinal= c(pratylenchus_log01_ordinal,pratylenchus_log02_ordinal)
+
+odd_pratylenchus_ordinal = as.data.frame(odd_pratylenchus_ordinal)
+odd_pratylenchus_ordinal$nematode = c("Pratylenchus","Pratylenchus")
+odd_pratylenchus_ordinal$comparation = c("5x6","5x6")
+colnames(odd_pratylenchus_ordinal) = c("odd","nematode","comparation")
+
+soil05_pratylenchus = odd_pratylenchus_ordinal
+
+#Tillage 1x2
+
+pratylenchus_log01_ordinal<-praty_predicted$odd[praty_predicted$tillage==1]
+pratylenchus_log02_ordinal<-praty_predicted$odd[praty_predicted$tillage==2]
+
+pratylenchus_log01_ordinal = mean(pratylenchus_log01_ordinal)
+pratylenchus_log02_ordinal = mean(pratylenchus_log02_ordinal)
+
+
+odd_pratylenchus_ordinal= c(pratylenchus_log01_ordinal,pratylenchus_log02_ordinal)
+
+odd_pratylenchus_ordinal = as.data.frame(odd_pratylenchus_ordinal)
+odd_pratylenchus_ordinal$nematode = c("Pratylenchus","Pratylenchus")
+odd_pratylenchus_ordinal$comparation = c("tillage","tillage")
+colnames(odd_pratylenchus_ordinal) = c("odd","nematode","comparation")
+
+tillage_pratylenchus = odd_pratylenchus_ordinal
+
+#Cropping 1x2
+
+pratylenchus_log01_ordinal<-praty_predicted$odd[praty_predicted$cropping==1]
+pratylenchus_log02_ordinal<-praty_predicted$odd[praty_predicted$cropping==2]
+
+pratylenchus_log01_ordinal = mean(pratylenchus_log01_ordinal)
+pratylenchus_log02_ordinal = mean(pratylenchus_log02_ordinal)
+
+
+odd_pratylenchus_ordinal= c(pratylenchus_log01_ordinal,pratylenchus_log02_ordinal)
+
+odd_pratylenchus_ordinal = as.data.frame(odd_pratylenchus_ordinal)
+odd_pratylenchus_ordinal$nematode = c("Pratylenchus","Pratylenchus")
+odd_pratylenchus_ordinal$comparation = c("cropping","cropping")
+colnames(odd_pratylenchus_ordinal) = c("odd","nematode","comparation")
+
+cropping_pratylenchus = odd_pratylenchus_ordinal
+
+all_odd_pratylenchus = rbind(soil02_pratylenchus,soil05_pratylenchus,
+                             cropping_pratylenchus,
+                       tillage_pratylenchus)
+
+all_odd_ratio_pratylenchus = all_odd_pratylenchus %>% 
+  group_by(comparation) %>% 
+    summarise(
+    n = n(),
+    ratio = odd[1]/odd[2],
+    mean = mean(odd),
+    sd = sd(odd),
+   se=sd/sqrt(n)) %>% 
+  group_by(comparation) %>% 
+  mutate(
+   lower = (ratio - 1.96 * se),
+   upper = (ratio + 1.96 * se))
+
+coef(summary(praty_ordinal))
+```
+
+## By Criconematidae
+
+```{r}
+#Criconematidae
+
+criconematidae_ordinal = population %>% 
+  filter(genus == "Criconematidae") %>% 
+  filter(soil %in% c("2","5","6")) %>% 
+   group_by(samples,soil,altitute, sand,clay,ph,ec,cropping,tillage) %>% 
+  summarise(
+    quantity = sum(quantity)
+  )
+criconematidae_ordinal$ph = as.numeric(criconematidae_ordinal$ph)
+criconematidae_ordinal <- criconematidae_ordinal %>%
+  mutate(quantity = case_when(quantity >= 0 ~ quantity,
+                                quantity == NA_character_ ~ 0 )) %>% 
+  mutate(risk_category = case_when(
+    quantity == 0 ~ "0",
+    quantity <= 75  ~ "1",
+    quantity <= 150 ~ "2",
+    quantity <= 300 ~ "2",
+    quantity < 600 ~"2",
+    quantity >= 600 ~ "2"
+  ))
+
+criconematidae_ordinal$risk_category = as.factor(criconematidae_ordinal$risk_category)
+#criconematidae_ordinal$tillage = as.character(criconematidae_ordinal$tillage)
+#criconematidae_ordinal$soil = as.character(criconematidae_ordinal$soil)
+#criconematidae_ordinal$cropping = as.character(criconematidae_ordinal$cropping)
+
+crico_ordinal = clm(risk_category ~ tillage + cropping + soil + sand + clay  +
+                       ph,
+                     data = criconematidae_ordinal,link = "logit")
+
+
+
+crico_predicted =cbind(criconematidae_ordinal, predict(crico_ordinal, criconematidae_ordinal, type = "prob")$fit)
+colnames(crico_predicted) = c("samples","soil","altitute","sand","clay","ph","ec",
+                              "cropping","tillage","quantity","risk_category",
+                              "prob")
+
+crico_predicted = crico_predicted %>% 
+  group_by(samples,soil,altitute,sand,clay,ph,cropping,tillage,quantity,
+         risk_category,prob) %>% 
+  summarise(
+    odd = (prob/(1-prob)
+  ))
+
+#Summary
+
+exp(coef(summary(crico_ordinal)))
+coef(summary(crico_ordinal))
+coef(crico_ordinal)
+
+anova(crico_ordinal, type="III")
+confint(crico_ordinal, type = c("profile"),level = .95)
+
+#Wald X²
+coef(crico_ordinal)
+waldtest(crico_ordinal, term = 1)
+waldtest(crico_ordinal, term = 2)
+waldtest(crico_ordinal, term = 3)
+waldtest(crico_ordinal, term = 4)
+waldtest(crico_ordinal, term = 5)
+waldtest(crico_ordinal, term = 6)
+#waldtest(crico_ordinal, term = 7)
+#waldtest(crico_ordinal, term = 8)
+
+#LRT
+
+lrtest(crico_ordinal)
+
+library(ggeffects)
+
+#coefficents
+coef(summary(crico_ordinal))
+ggpredictions_ols1 = ggpredict(crico_ordinal, terms = "clay")
+ggpredictions_ols1
+
+#ggpredictions_ols1$ph = factor(ggpredictions_ols1$ph) # CONFERIR
+
+
+```
+
+### Cross-validation
+
+```{r}
+
+risk_criconematidae = criconematidae_ordinal$risk_category
+class(risk_criconematidae)
+
+criconematidae_ordinal["samples"] = NULL
+criconematidae_ordinal["ec"] = NULL
+criconematidae_ordinal["altitute"] = NULL
+criconematidae_ordinal["quantity"] = NULL
+criconematidae_ordinal["risk_category"] = NULL
+
+x_ordinal_criconematidae = criconematidae_ordinal
+x_ordinal_criconematidae = as.matrix(x_ordinal_criconematidae)
+class(x_ordinal_criconematidae)
+
+criconematidae_cv = ordinalNetCV(x_ordinal_criconematidae, risk_criconematidae, 
+                                  tuneMethod="cvMisclass",family = "cumulative", link = "logit",
+                                  lambdaMinRatio = 1e-04,printProgress = FALSE)
+summary(criconematidae_cv)
+colMeans(summary(criconematidae_cv))
+
+```
+
+### Odd ratio
+
+```{r}
+
+
+#Soil 2 x 6
+
+criconematidae_log01_ordinal<-crico_predicted$odd[crico_predicted$soil==2]
+criconematidae_log02_ordinal<-crico_predicted$odd[crico_predicted$soil==6]
+
+criconematidae_log01_ordinal = mean(criconematidae_log01_ordinal)
+criconematidae_log02_ordinal = mean(criconematidae_log02_ordinal)
+
+
+odd_criconematidae_ordinal= c(criconematidae_log01_ordinal,criconematidae_log02_ordinal)
+
+odd_criconematidae_ordinal = as.data.frame(odd_criconematidae_ordinal)
+odd_criconematidae_ordinal$nematode = c("Criconematidae","Criconematidae")
+odd_criconematidae_ordinal$comparation = c("2x6","2x6")
+colnames(odd_criconematidae_ordinal) = c("odd","nematode","comparation")
+
+soil02_criconematidae = odd_criconematidae_ordinal
+
+
+
+#Soil 5x6
+
+criconematidae_log01_ordinal<-crico_predicted$odd[crico_predicted$soil==5]
+criconematidae_log02_ordinal<-crico_predicted$odd[crico_predicted$soil==6]
+
+criconematidae_log01_ordinal = mean(criconematidae_log01_ordinal)
+criconematidae_log02_ordinal = mean(criconematidae_log02_ordinal)
+
+
+odd_criconematidae_ordinal= c(criconematidae_log01_ordinal,criconematidae_log02_ordinal)
+
+odd_criconematidae_ordinal = as.data.frame(odd_criconematidae_ordinal)
+odd_criconematidae_ordinal$nematode = c("Criconematidae","Criconematidae")
+odd_criconematidae_ordinal$comparation = c("5x6","5x6")
+colnames(odd_criconematidae_ordinal) = c("odd","nematode","comparation")
+
+soil05_criconematidae = odd_criconematidae_ordinal
+
+#Tillage 1x2
+
+criconematidae_log01_ordinal<-crico_predicted$odd[crico_predicted$tillage==1]
+criconematidae_log02_ordinal<-crico_predicted$odd[crico_predicted$tillage==2]
+
+criconematidae_log01_ordinal = mean(criconematidae_log01_ordinal)
+criconematidae_log02_ordinal = mean(criconematidae_log02_ordinal)
+
+
+odd_criconematidae_ordinal= c(criconematidae_log01_ordinal,criconematidae_log02_ordinal)
+
+odd_criconematidae_ordinal = as.data.frame(odd_criconematidae_ordinal)
+odd_criconematidae_ordinal$nematode = c("Criconematidae","Criconematidae")
+odd_criconematidae_ordinal$comparation = c("tillage","tillage")
+colnames(odd_criconematidae_ordinal) = c("odd","nematode","comparation")
+
+tillage_criconematidae = odd_criconematidae_ordinal
+
+#Cropping 1x2
+
+criconematidae_log01_ordinal<-crico_predicted$odd[crico_predicted$cropping==1]
+criconematidae_log02_ordinal<-crico_predicted$odd[crico_predicted$cropping==2]
+
+criconematidae_log01_ordinal = mean(criconematidae_log01_ordinal)
+criconematidae_log02_ordinal = mean(criconematidae_log02_ordinal)
+
+
+odd_criconematidae_ordinal= c(criconematidae_log01_ordinal,criconematidae_log02_ordinal)
+
+odd_criconematidae_ordinal = as.data.frame(odd_criconematidae_ordinal)
+odd_criconematidae_ordinal$nematode = c("Criconematidae","Criconematidae")
+odd_criconematidae_ordinal$comparation = c("cropping","cropping")
+colnames(odd_criconematidae_ordinal) = c("odd","nematode","comparation")
+
+cropping_criconematidae = odd_criconematidae_ordinal
+
+all_odd_criconematidae = rbind(soil02_criconematidae,soil05_criconematidae,
+                               cropping_criconematidae,
+                       tillage_criconematidae)
+
+all_odd_ratio_criconematidae = all_odd_criconematidae %>% 
+  group_by(comparation) %>% 
+    summarise(
+    n = n(),
+    ratio_exp = exp(odd[1]/odd[2]),
+    ratio = odd[1]/odd[2],
+    mean = mean(odd),
+    sd = sd(odd),
+   se=sd/sqrt(n)) %>% 
+  group_by(comparation) %>% 
+  mutate(
+   lower = exp(ratio - 1.96 * se),
+   upper = exp(ratio + 1.96 * se))
+
+coef(summary(crico_ordinal))
+```
+
+## Selecting of variables (LASSO) - CONFERIR
+
+```{r,eval = FALSE, echo = TRUE}
+library(pROC)
+library(ordinalNet)
+
+all_genus = rbind(helicotylenchus_ordinal,pratylenchus_ordinal,criconematidae_ordinal)
+all_genus$risk_category = as.numeric(all_genus$risk_category)
+
+all_genus["samples"] = NULL
+all_genus = as.data.frame(all_genus)
+all_genus["quantity"] = NULL
+class(all_genus)
+
+set.seed(123)
+lambdas <- 10^seq(2, -3, by = -0.1)
+
+
+y <- all_genus$risk_category
+y = as.factor(y)
+
+
+X <- as.matrix(subset(all_genus, select = -risk_category))
+
+
+# Ajuste do modelo LASSO para regressão ordinal
+lasso_model <- ordinalNet(X, y,
+  alpha = 1,
+  lambdaVals = NULL,
+  nLambda = 20,
+  family = "cumulative",
+  standardize = TRUE
+)
+
+# Coeficientes do modelo
+coef(lasso_model)
+summary(lasso_model)
+
+# Extrair os valores de lambda e os erros de validação cruzada
+
+lambda_values <- lasso_model$lambda #0.0004777567
+
+#Best model
+
+lasso_model_best = ordinalNet(X, y,
+  alpha = 1,
+  lambdaVals = 0.0004777567,
+  family = "cumulative",
+  standardize = TRUE
+)
+coef(lasso_model_best)
+
+helic_ordinal = clm(risk_category ~ tillage + cropping + soil + sand + clay  +
+                       ph,
+                     data = helicotylenchus_ordinal,link = "logit")
+car::vif(helic_ordinal)
+
+```
+
+## Distribution
+
+```{r,eval = FALSE, echo = TRUE}
+helicotylenchus_threshold = helicotylenchus_ordinal %>% 
+  dplyr::group_by(risk_category) %>% 
+  dplyr::summarise(
+    n = n()
+  ) %>% 
+  dplyr::group_by(risk_category)%>% 
+  dplyr::mutate(
+    porcentagem = (n/320)*100
+  )
+
+helicotylenchus_ordinal %>% 
+  dplyr::filter(risk_category == "2")
+
+heli_threshold = helicotylenchus_threshold %>% 
+  ggplot(aes(risk_category,n, fill = risk_category))+
+  geom_bar(stat = "identity")+
+  scale_fill_viridis_d()+
+  theme_minimal()+
+  labs(x = "Risk category",
+       y = "Samples")+
+  theme(text = element_text(size = 16),
+        legend.position = "none")
+
+
+
+pratylenchus_threshold = pratylenchus_ordinal %>% 
+  dplyr::group_by(risk_category) %>% 
+ dplyr::summarise(
+    n = n()
+  ) %>% 
+  dplyr::group_by(risk_category) %>% 
+  dplyr::mutate(
+    porcentagem = (n/320)*100
+  )
+
+pratylenchus_ordinal%>% 
+  dplyr::filter(risk_category == "2")
+
+
+praty_threshold = pratylenchus_threshold %>% 
+  ggplot(aes(risk_category,n, fill = risk_category))+
+  geom_bar(stat = "identity")+
+  scale_fill_viridis_d()+
+  theme_minimal()+
+  labs(x = "Risk category",
+       y = "")+
+  theme(text = element_text(size = 16),
+        legend.position = "none")
+  
+criconematidae_threshold = criconematidae_ordinal %>% 
+  dplyr::group_by(risk_category) %>% 
+ dplyr::summarise(
+    n = n()
+  ) %>% 
+  dplyr::group_by(risk_category) %>% 
+  dplyr::mutate(
+    porcentagem = (n/320)*100
+  )
+
+pratylenchus_ordinal%>% 
+ dplyr::filter(risk_category == "2")
+
+crico_threshold = criconematidae_threshold %>% 
+  ggplot(aes(risk_category,n, fill = risk_category))+
+  geom_bar(stat = "identity")+
+  scale_fill_viridis_d()+
+  theme_minimal()+
+  labs(x = "Risk category",
+       y = "")+
+  theme(text = element_text(size = 16),
+        legend.position = "none")
+
+  
+  plot_grid(heli_threshold, praty_threshold,crico_threshold,
+            labels = c("A","B","C"), label_size = 18, ncol= 3)
+  
+  ggsave("threshold_nematodes.png", bg = "white", width = 14, height = 8, dpi = 600)
+```
+
+## Overall probability
+
+```{r}
+
+helic_predicted$genus = "Helicotylenchus"
+praty_predicted$genus = "Pratylenchus"
+crico_predicted$genus = "Criconematidae"
+
+nematodes_ordinal = rbind(helic_predicted, praty_predicted, crico_predicted)
+
+
+nematodes_ordinal_altitude <- nematodes_ordinal %>%
+  dplyr::mutate(altitute = case_when(altitute >= 0 ~ altitute,
+                                altitute == NA_character_ ~ 0 )) %>% 
+  dplyr::mutate(altitude_range = case_when(
+    altitute <= 400 ~ "280 a 400",
+    altitute <= 600  ~ "401 a 600",
+    altitute <= 800 ~ "601 a 800",
+    altitute <= 1000 ~ "801 a 1000",
+    altitute > 1000 ~"acima de 1001"
+  ))
+
+altitude_ordinal = nematodes_ordinal_altitude %>% 
+    group_by(genus,altitude_range) %>% 
+  summarise(
+    
+    prob = prob
+   
+  ) 
+
+
+point = altitude_ordinal %>% 
+     group_by(genus,altitude_range) %>% 
+  summarise(
+    probi = prob) %>% 
+  group_by(genus,altitude_range) %>%
+  summarise(
+   prob = mean(probi),
+   sd = sd(probi))
+ 
+
+
+point %>% 
+  ggplot(aes(altitude_range,prob))+
+  geom_jitter(data = altitude_ordinal, alpha = .7, size = 5, width = .03, color = "gray")+
+  #geom_errorbar(aes(altitude_range,ymin = prob - sd , max = prob + sd))+
+  #geom_violin(data = altitude_genus, alpha = .7, width = .03, fill = "grey", color = "grey")+
+  geom_pointrange(aes(ymin = prob- sd, ymax = prob + sd), color = "black", size = 0.5)+
+  theme_minimal()+
+  facet_wrap(~genus)+
+  labs(x= "Range altitude",
+       y = "Probability")+
+  theme(text = element_text(size = 18),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+   
+  
+```
+
+## Plotting
+
+```{r}
+helic_predicted$genus= replicate(320,"Helicotylenchus")
+crico_predicted$genus= replicate(320,"Criconematidae")
+praty_predicted$genus= replicate(320,"Pratylenchus")
+
+
+genus_ordinal = rbind(helic_predicted, praty_predicted, crico_predicted)
+
+
+genus_ordinal[genus_ordinal$risk_category== "0",c("risk")] <- "Not risk"
+genus_ordinal[genus_ordinal$risk_category== "1",c("risk")] <- "Insignificant risk"
+genus_ordinal[genus_ordinal$risk_category== "2",c("risk")] <- "Moderate-high risk"
+```
+
+### By sand
+
+```{r}
+sand_ordinal = genus_ordinal %>% 
+  filter(risk == "Moderate-high risk") %>% 
+  #filter(genus == "Rotylenchulus") %>% 
+  ggplot(aes(sand,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "grey", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F, color = "black")+
+ # geom_line(data = gg2, aes(silt = x, y = ymin), size = 0.02) +
+  #  geom_line(data = gg2, aes(silt = x, y = ymax), size = 0.02)+
+  facet_wrap(~genus, nrow = 3)+
+  theme_minimal()+
+  labs(x = "Sand",
+       y = "")+
+  theme(text = element_text(size = 18))
+
+#ggsave("probability_ordinal_sand.png", dpi = 600, width = 12, height = 6,  bg = "white")
+```
+
+### By clay
+
+```{r}
+clay_ordinal = genus_ordinal %>% 
+  filter(risk == "Moderate-high risk") %>%
+  ggplot(aes(clay,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "gray", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F,color = "black")+
+ # geom_line(data = gg2, aes(silt = x, y = ymin), size = 0.02) +
+  #  geom_line(data = gg2, aes(silt = x, y = ymax), size = 0.02)+
+  facet_wrap(~genus, nrow = 3)+
+  theme_minimal()+
+  labs(x = "Clay",
+       y = "Probability")+
+  theme(text = element_text(size = 18))
+
+#ggsave("probability_ordinal_clay.png", dpi = 600, width = 12, height = 6,  bg = "white")
+```
+
+### By pH
+
+```{r}
+ph_ordinal = genus_ordinal %>% 
+  filter(risk == "Moderate-high risk") %>%
+  ggplot(aes(ph,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "gray", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F, color = "black")+
+  facet_wrap(~genus, nrow = 3)+
+  theme_minimal()+
+  labs(x = "pH",
+       y = "")+
+  theme(text = element_text(size = 18))
+
+#ggsave("probability_ordinal_ph.png", dpi = 600, width = 12, height = 6,  bg = "white")
+```
+
+### Joining
+
+```{r}
+(clay_ordinal|sand_ordinal|ph_ordinal)
+
+ggsave("ordinal_genus.png", dpi = 600, bg = "white",height = 6, width = 12)
+```
+
