@@ -1,0 +1,1274 @@
+---
+title: "lixo"
+format: html
+editor: visual
+---
+
+```{r}
+
+
+#incidence = incidence %>% 
+ # filter(!city %in% c("DFL","DFC"))
+
+
+ incidence[incidence$city== "Abadiânia",c("samples_n")] <- 7
+ incidence[incidence$city== "Acreuna",c("samples_n")] <- 15
+ incidence[incidence$city== "Alexânia",c("samples_n")] <- 10
+ incidence[incidence$city== "Alto Paraiso",c("samples_n")] <- 5
+ incidence[incidence$city== "Barro Alto",c("samples_n")] <- 8
+ incidence[incidence$city== "Bom Jesus de Goiás",c("samples_n")] <- 15
+ incidence[incidence$city== "Cabeceiras",c("samples_n")] <- 5
+ incidence[incidence$city== "Caiâponia",c("samples_n")] <- 15
+ incidence[incidence$city== "Ceres",c("samples_n")] <- 15
+ incidence[incidence$city== "Cristalina",c("samples_n")] <- 15
+ incidence[incidence$city== "Doverlândia",c("samples_n")] <- 15
+ incidence[incidence$city== "Firminópolis",c("samples_n")] <- 5
+ incidence[incidence$city== "Formosa",c("samples_n")] <- 5
+ incidence[incidence$city== "Jataí",c("samples_n")] <- 15
+ incidence[incidence$city== "Luziânia",c("samples_n")] <- 15
+ incidence[incidence$city== "Mineiros",c("samples_n")] <- 15
+ incidence[incidence$city== "Montividiu",c("samples_n")] <- 15
+ incidence[incidence$city== "Nova Crixás",c("samples_n")] <- 5 
+ incidence[incidence$city== "Planaltina",c("samples_n")] <- 15
+ incidence[incidence$city== "Porangatu",c("samples_n")] <-  15
+ incidence[incidence$city== "Portelândia",c("samples_n")] <- 15
+ incidence[incidence$city== "Rio Verde",c("samples_n")] <- 15
+ incidence[incidence$city== "São Miguel do Passo Quatro",c("samples_n")] <- 15
+ incidence[incidence$city== "Serranópolis",c("samples_n")] <- 10
+ incidence[incidence$city== "Silvânia",c("samples_n")] <- 15
+ incidence[incidence$city== "Vianópolis",c("samples_n")] <- 15
+```
+
+
+## Models diagnostic (graphic)
+
+```{r}
+check_singularity(praty_log)
+check_model(praty_log)
+
+simulationOutput <- simulateResiduals(fittedModel = praty_log)
+plot(simulationOutput)
+```
+
+### Aphelenchus
+
+```{r}
+
+#Model log with best
+aphelenchus_binomial <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = aphelenchus_log,family = binomial(link = "logit"))
+
+summary(aphelenchus_binomial)
+
+pred_aphelenchus <- predict(aphelenchus_binomial, aphelenchus_log, type = "response")
+
+
+#Better thresholds
+dat_aphelenchus <- data.frame(1, aphelenchus_log$incidence, pred_aphelenchus)
+  optimal.thresholds(dat_aphelenchus)
+
+# Confusion matrix with the MAXsen+spe threshold
+confusionMatrix(data = as.factor(as.numeric(pred_aphelenchus > 0.82)),  mode= "everything",  reference = as.factor(aphelenchus_log$incidence))
+
+
+#Plot
+auc.roc.plot(dat_aphelenchus)
+calibration.plot(dat_aphelenchus)
+
+error.threshold.plot(dat_aphelenchus, opt.methods = 3) #takes a single model and plots the sensitivity and specificity as a function of threshold. 
+pcc(cmx(dat_aphelenchus), st.dev = TRUE) #calculates the percent correctly classified and (optionally) the associated standard deviation from a confusion matrix.
+
+presence.absence.accuracy(dat_aphelenchus,threshold=0.82,st.dev=FALSE) #Calculates five accuracy measures (pcc, sensitivity, specificity, Kappa, and AUC)
+presence.absence.summary(dat_aphelenchus) #Produces four types of Presence/Absence accuracy plots for a single set of model Predictions
+
+roc_aphelenchus <- roc.plot.calculate(dat_aphelenchus) #data frame
+
+roc_aphelenchus |> 
+  ggplot(aes(threshold, sensitivity))+
+  geom_line()+
+  geom_line(aes(threshold, specificity))+
+  geom_line(aes(threshold, Kappa))
+
+
+#LOOCV
+acc_aphelenchus <- NULL
+for(i in 1:nrow(aphelenchus_log))
+{
+    # Train-test splitting
+    # 499 samples -> fitting
+    # 1 sample -> testing
+    train <- aphelenchus_log[-i,]
+    test <- aphelenchus_log[i,]
+    
+    # Fitting
+    model <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = aphelenchus_log,
+                family = binomial(link = "logit"))
+    
+    # Predict results
+    results_prob <- predict(model,test,type='response')
+    
+    # If prob > 0.5 then 1, else 0
+    results <- ifelse(results_prob > 0.82,1,0)
+    
+    # Actual answers
+    answers <- test$incidence
+    
+    # Calculate accuracy
+    misClasificError <- mean(answers != results)
+    
+    # Collecting results
+    acc_aphelenchus[i] <- 1-misClasificError
+}
+
+# Average accuracy of the model
+mean(acc_aphelenchus)
+
+
+```
+
+### Aphelenchoides
+
+```{r}
+#Model log with best
+aphelenchoides_binomial <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = aphelenchoides_log,family = binomial(link = "logit"))
+
+summary(aphelenchoides_binomial)
+
+pred_aphelenchoides <- predict(aphelenchoides_binomial, aphelenchoides_log, type = "response")
+
+#Better thresholds
+dat_aphelenchoides <- data.frame(1, aphelenchoides_log$incidence, pred_aphelenchoides)
+optimal.thresholds(dat_aphelenchoides)
+
+# Confusion matrix with the MAXsen+spe threshold
+confusionMatrix(data = as.factor(as.numeric(pred_aphelenchoides > 0.65)),  mode= "everything",  reference = as.factor(aphelenchoides_log$incidence))
+
+
+#Plot
+auc.roc.plot(dat_aphelenchoides)
+calibration.plot(dat_aphelenchoides)
+
+error.threshold.plot(dat_aphelenchoides, opt.methods = 3) #takes a single model and plots the sensitivity and specificity as a function of threshold. 
+pcc(cmx(dat_aphelenchoides), st.dev = TRUE) #calculates the percent correctly classified and (optionally) the associated standard deviation from a confusion matrix.
+
+presence.absence.accuracy(dat_aphelenchoides,threshold=0.65,st.dev=FALSE) #Calculates five accuracy measures (pcc, sensitivity, specificity, Kappa, and AUC)
+presence.absence.summary(dat_aphelenchoides) #Produces four types of Presence/Absence accuracy plots for a single set of model Predictions
+
+roc_aphelenchoides <- roc.plot.calculate(dat_aphelenchoides) #data frame
+
+roc_aphelenchoides |> 
+  ggplot(aes(threshold, sensitivity))+
+  geom_line()+
+  geom_line(aes(threshold, specificity))+
+  geom_line(aes(threshold, Kappa))
+
+
+#LOOCV
+acc_aphelenchoides <- NULL
+for(i in 1:nrow(aphelenchoides_log))
+{
+    # Train-test splitting
+    # 499 samples -> fitting
+    # 1 sample -> testing
+    train <- aphelenchoides_log[-i,]
+    test <- aphelenchoides_log[i,]
+    
+    # Fitting
+    model <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = aphelenchoides_log,
+                family = binomial(link = "logit"))
+    
+    # Predict results
+    results_prob <- predict(model,test,type='response')
+    
+    # If prob > 0.5 then 1, else 0
+    results <- ifelse(results_prob > 0.65,1,0)
+    
+    # Actual answers
+    answers <- test$incidence
+    
+    # Calculate accuracy
+    misClasificError <- mean(answers != results)
+    
+    # Collecting results
+    acc_aphelenchoides[i] <- 1-misClasificError
+}
+
+# Average accuracy of the model
+mean(acc_aphelenchoides)
+
+
+```
+
+### Criconematidae
+
+```{r}
+#Model log with best
+criconematidae_binomial <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = criconematidae_log,family = binomial(link = "logit"))
+
+summary(criconematidae_binomial)
+
+pred_criconematidae <- predict(criconematidae_binomial, criconematidae_log, type = "response")
+
+#Better thresholds
+dat_criconematidae <- data.frame(1, criconematidae_log$incidence, pred_criconematidae)
+optimal.thresholds(dat_criconematidae)
+
+# Confusion matrix with the MAXsen+spe threshold
+confusionMatrix(data = as.factor(as.numeric(pred_criconematidae > 0.26)),  mode= "everything",  reference = as.factor(criconematidae_log$incidence))
+
+
+#Plot
+auc.roc.plot(dat_criconematidae)
+calibration.plot(dat_criconematidae)
+
+error.threshold.plot(dat_criconematidae, opt.methods = 3) #takes a single model and plots the sensitivity and specificity as a function of threshold. 
+pcc(cmx(dat_criconematidae), st.dev = TRUE) #calculates the percent correctly classified and (optionally) the associated standard deviation from a confusion matrix.
+
+presence.absence.accuracy(dat_criconematidae,threshold=0.26,st.dev=FALSE) #Calculates five accuracy measures (pcc, sensitivity, specificity, Kappa, and AUC)
+presence.absence.summary(dat_criconematidae) #Produces four types of Presence/Absence accuracy plots for a single set of model Predictions
+
+roc_criconematidae <- roc.plot.calculate(dat_criconematidae) #data frame
+
+roc_criconematidae |> 
+  ggplot(aes(threshold, sensitivity))+
+  geom_line()+
+  geom_line(aes(threshold, specificity))+
+  geom_line(aes(threshold, Kappa))
+
+
+#LOOCV
+acc_criconematidae <- NULL
+for(i in 1:nrow(criconematidae_log))
+{
+    # Train-test splitting
+    # 499 samples -> fitting
+    # 1 sample -> testing
+    train <- criconematidae_log[-i,]
+    test <- criconematidae_log[i,]
+    
+    # Fitting
+    model <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = criconematidae_log,
+                family = binomial(link = "logit"))
+    
+    # Predict results
+    results_prob <- predict(model,test,type='response')
+    
+    # If prob > 0.5 then 1, else 0
+    results <- ifelse(results_prob > 0.26,1,0)
+    
+    # Actual answers
+    answers <- test$incidence
+    
+    # Calculate accuracy
+    misClasificError <- mean(answers != results)
+    
+    # Collecting results
+    acc_criconematidae[i] <- 1-misClasificError
+}
+
+# Average accuracy of the model
+mean(acc_criconematidae)
+
+
+```
+
+### Helicotylenchus
+
+```{r}
+#Model log with best
+helicotylenchus_binomial <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = helicotylenchus_log,family = binomial(link = "logit"))
+
+summary(helicotylenchus_binomial)
+
+pred_helicotylenchus <- predict(helicotylenchus_binomial, helicotylenchus_log, type = "response")
+
+#Better thresholds
+dat_helicotylenchus <- data.frame(1, helicotylenchus_log$incidence, pred_helicotylenchus)
+optimal.thresholds(dat_helicotylenchus)
+
+# Confusion matrix with the MAXsen+spe threshold
+confusionMatrix(data = as.factor(as.numeric(pred_helicotylenchus > 0.9)),  mode= "everything",  reference = as.factor(helicotylenchus_log$incidence))
+
+
+#Plot
+auc.roc.plot(dat_helicotylenchus)
+calibration.plot(dat_helicotylenchus)
+
+error.threshold.plot(dat_helicotylenchus, opt.methods = 3) #takes a single model and plots the sensitivity and specificity as a function of threshold. 
+pcc(cmx(dat_helicotylenchus), st.dev = TRUE) #calculates the percent correctly classified and (optionally) the associated standard deviation from a confusion matrix.
+
+presence.absence.accuracy(dat_helicotylenchus,threshold=.9,st.dev=FALSE) #Calculates five accuracy measures (pcc, sensitivity, specificity, Kappa, and AUC)
+presence.absence.summary(dat_helicotylenchus) #Produces four types of Presence/Absence accuracy plots for a single set of model Predictions
+
+roc_helicotylenchus <- roc.plot.calculate(dat_helicotylenchus) #data frame
+
+roc_helicotylenchus |> 
+  ggplot(aes(threshold, sensitivity))+
+  geom_line()+
+  geom_line(aes(threshold, specificity))+
+  geom_line(aes(threshold, Kappa))
+
+
+#LOOCV
+acc_helicotylenchus <- NULL
+for(i in 1:nrow(helicotylenchus_log))
+{
+    # Train-test splitting
+    # 499 samples -> fitting
+    # 1 sample -> testing
+    train <- helicotylenchus_log[-i,]
+    test <- helicotylenchus_log[i,]
+    
+    # Fitting
+    model <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = helicotylenchus_log,
+                family = binomial(link = "logit"))
+    
+    # Predict results
+    results_prob <- predict(model,test,type='response')
+    
+    # If prob > 0.5 then 1, else 0
+    results <- ifelse(results_prob > 0.9,1,0)
+    
+    # Actual answers
+    answers <- test$incidence
+    
+    # Calculate accuracy
+    misClasificError <- mean(answers != results)
+    
+    # Collecting results
+    acc_helicotylenchus[i] <- 1-misClasificError
+}
+
+# Average accuracy of the model
+mean(acc_helicotylenchus)
+
+
+
+```
+
+### Rotylenchulus
+
+```{r}
+#Model log with best
+rotylenchulus_binomial <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = rotylenchulus_log,family = binomial(link = "logit"))
+
+summary(rotylenchulus_binomial)
+
+pred_rotylenchulus <- predict(rotylenchulus_binomial, rotylenchulus_log, type = "response")
+
+#Better thresholds
+dat_rotylenchulus <- data.frame(1, rotylenchulus_log$incidence, pred_rotylenchulus)
+optimal.thresholds(dat_rotylenchulus)
+
+# Confusion matrix with the MAXsen+spe threshold
+confusionMatrix(data = as.factor(as.numeric(pred_rotylenchulus > .06)),  mode= "everything",  reference = as.factor(rotylenchulus_log$incidence))
+
+
+#Plot
+auc.roc.plot(dat_rotylenchulus)
+calibration.plot(dat_rotylenchulus)
+
+error.threshold.plot(dat_rotylenchulus, opt.methods = 3) #takes a single model and plots the sensitivity and specificity as a function of threshold. 
+pcc(cmx(dat_rotylenchulus), st.dev = TRUE) #calculates the percent correctly classified and (optionally) the associated standard deviation from a confusion matrix.
+
+presence.absence.accuracy(dat_rotylenchulus,threshold=.06,st.dev=FALSE) #Calculates five accuracy measures (pcc, sensitivity, specificity, Kappa, and AUC)
+presence.absence.summary(dat_rotylenchulus) #Produces four types of Presence/Absence accuracy plots for a single set of model Predictions
+
+roc_rotylenchulus <- roc.plot.calculate(dat_rotylenchulus) #data frame
+
+roc_rotylenchulus |> 
+  ggplot(aes(threshold, sensitivity))+
+  geom_line()+
+  geom_line(aes(threshold, specificity))+
+  geom_line(aes(threshold, Kappa))
+
+
+#LOOCV
+acc_rotylenchulus <- NULL
+for(i in 1:nrow(rotylenchulus_log))
+{
+    # Train-test splitting
+    # 499 samples -> fitting
+    # 1 sample -> testing
+    train <- rotylenchulus_log[-i,]
+    test <- rotylenchulus_log[i,]
+    
+    # Fitting
+    model <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = rotylenchulus_log,
+                family = binomial(link = "logit"))
+    
+    # Predict results
+    results_prob <- predict(model,test,type='response')
+    
+    # If prob > 0.5 then 1, else 0
+    results <- ifelse(results_prob > .06,1,0)
+    
+    # Actual answers
+    answers <- test$incidence
+    
+    # Calculate accuracy
+    misClasificError <- mean(answers != results)
+    
+    # Collecting results
+    acc_rotylenchulus[i] <- 1-misClasificError
+}
+
+# Average accuracy of the model
+mean(acc_rotylenchulus)
+
+```
+
+### Pratylenchus
+
+```{r}
+#Model log with best
+pratylenchus_binomial <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = pratylenchus_log,family = binomial(link = "logit"))
+
+summary(pratylenchus_binomial)
+
+pred_pratylenchus <- predict(pratylenchus_binomial, pratylenchus_log, type = "response")
+
+#Better thresholds
+dat_pratylenchus <- data.frame(1, pratylenchus_log$incidence, pred_pratylenchus)
+optimal.thresholds(dat_pratylenchus)
+
+# Confusion matrix with the MAXsen+spe threshold
+confusionMatrix(data = as.factor(as.numeric(pred_pratylenchus > 0.58)),  mode= "everything",  reference = as.factor(pratylenchus_log$incidence))
+
+
+#Plot
+auc.roc.plot(dat_pratylenchus)
+calibration.plot(dat_pratylenchus)
+
+error.threshold.plot(dat_pratylenchus, opt.methods = 3) #takes a single model and plots the sensitivity and specificity as a function of threshold. 
+pcc(cmx(dat_pratylenchus), st.dev = TRUE) #calculates the percent correctly classified and (optionally) the associated standard deviation from a confusion matrix.
+
+presence.absence.accuracy(dat_pratylenchus,threshold=.58,st.dev=FALSE) #Calculates five accuracy measures (pcc, sensitivity, specificity, Kappa, and AUC)
+presence.absence.summary(dat_pratylenchus) #Produces four types of Presence/Absence accuracy plots for a single set of model Predictions
+
+roc_pratylenchus <- roc.plot.calculate(dat_pratylenchus) #data frame
+
+roc_pratylenchus |> 
+  ggplot(aes(threshold, sensitivity))+
+  geom_line()+
+  geom_line(aes(threshold, specificity))+
+  geom_line(aes(threshold, Kappa))
+
+
+#LOOCV
+acc_pratylenchus <- NULL
+for(i in 1:nrow(pratylenchus_log))
+{
+    # Train-test splitting
+    # 499 samples -> fitting
+    # 1 sample -> testing
+    train <- pratylenchus_log[-i,]
+    test <- pratylenchus_log[i,]
+    
+    # Fitting
+    model <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = pratylenchus_log,
+                family = binomial(link = "logit"))
+    
+    # Predict results
+    results_prob <- predict(model,test,type='response')
+    
+    # If prob > 0.5 then 1, else 0
+    results <- ifelse(results_prob > 0.58,1,0)
+    
+    # Actual answers
+    answers <- test$incidence
+    
+    # Calculate accuracy
+    misClasificError <- mean(answers != results)
+    
+    # Collecting results
+    acc_pratylenchus[i] <- 1-misClasificError
+}
+
+# Average accuracy of the model
+mean(acc_pratylenchus)
+
+
+
+```
+
+## Joining
+
+```{r}
+
+loocv_all = cbind(acc_aphelenchoides,acc_aphelenchus,acc_criconematidae,
+                  acc_helicotylenchus,acc_pratylenchus,acc_rotylenchulus)
+```
+
+## Altitude (REMOVER)
+
+```{r}
+
+helicotylenchus_log$prob = predict(heli_log, type = "response")
+criconematidae_log$prob = predict(crico_log, type = "response")
+aphelenchus_log$prob = predict(aphel_log, type = "response")
+aphelenchoides_log$prob = predict(aphels_log, type = "response")
+pratylenchus_log$prob = predict(praty_log, type = "response")
+rotylenchulus_log$prob = predict(rotyl_log, type = "response")
+#exp(summary(heli_log))
+
+
+altitude = rbind(helicotylenchus_log,criconematidae_log,aphelenchus_log,aphelenchoides_log,
+                 pratylenchus_log,rotylenchulus_log)
+
+
+altitude1 <- altitude %>%
+  mutate(altitute = case_when(altitute >= 0 ~ altitute,
+                                altitute == NA_character_ ~ 0 )) %>% 
+  mutate(altitude_range = case_when(
+    altitute <= 400 ~ "280 to 400",
+    altitute <= 600  ~ "401 to 600",
+    altitute <= 800 ~ "601 to 800",
+    altitute <= 1000 ~ "801 to 1000",
+    altitute > 1000 ~"Above 1001"
+  ))
+
+altitude_genus = altitude1 %>% 
+    group_by(genus,altitude_range) %>% 
+  summarise(
+    
+    prob = prob)
+   
+
+
+point = altitude1 %>% 
+    group_by(genus,altitude_range) %>% 
+  summarise(
+    
+    probi = mean(prob),
+    sd = sd(prob)
+   
+  ) %>%
+  group_by(genus,altitude_range) %>% 
+  summarise(
+   prob = mean(probi),
+   sd = sd
+   )
+ 
+#write_xlsx(point,"THAIS/point.xlsx")
+
+
+point %>% 
+    ggplot(aes(altitude_range,prob))+
+  geom_jitter(data = altitude_genus, alpha = .2, size = 5, width = .03, color = "gray")+
+  #geom_violin(data = altitude_genus, alpha = .7, width = .03, fill = "grey", color = "grey")+
+  geom_pointrange(aes(ymin = prob- sd, ymax = prob + sd), color = "#041e39", size = 1)+
+  ggthemes::theme_few()+
+  facet_wrap(~genus)+
+  labs(x= "Altitude (m)",
+       y = "Probability")+
+  theme(text = element_text(size = 18),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title = element_text(face = "bold"),
+        strip.text = element_text(face = "italic"))
+  
+#ggsave("fig/prob_altitude.png", bg = "white", width = 12, height = 8)
+```
+
+## Overall
+
+```{r}
+altitude_genus = altitude1 %>% 
+    group_by(genus,altitude_range,sand,clay,ph,cropping,soil,tillage) %>% 
+  summarise(
+    
+    prob = prob
+   
+  )
+
+#write_xlsx(altitude_genus,"THAIS/altitude_genus.xlsx")
+
+```
+
+## Probability of incidence
+
+### By tillage and sand
+
+```{r}
+altitude_genus %>% 
+  #filter(genus == "Aphelenchus") %>% 
+  ggplot(aes(sand,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "gray", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F, color = "black")+
+ # geom_line(data = gg2, aes(silt = x, y = ymin), size = 0.02) +
+  #  geom_line(data = gg2, aes(silt = x, y = ymax), size = 0.02)+
+  facet_wrap(~genus+tillage, nrow = 3)+
+  ggthemes::theme_few()+
+  labs(x = "Sand",
+       y = "Probability")+
+  theme(text = element_text(size = 18))
+
+ggsave("probability_sand_tillage_all_genus.png", dpi = 600, width = 14, height = 8, bg = "white")
+```
+
+### By tillage and  pH
+
+```{r}
+altitude_genus %>% 
+  #filter(genus == "Aphelenchus") %>% 
+  ggplot(aes(ph,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "gray", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F, color = "black")+
+ # geom_line(data = gg2, aes(silt = x, y = ymin), size = 0.02) +
+  #  geom_line(data = gg2, aes(silt = x, y = ymax), size = 0.02)+
+  facet_wrap(~genus+tillage, nrow = 3)+
+  theme_minimal()+
+  labs(x = "pH gradient",
+       y = "Probabilitiy")+
+  theme(text = element_text(size = 18))
+
+ggsave("probability_ph_tillage_all_genus.png", dpi = 600, width = 14, height = 8,bg = "white")
+```
+
+### By tillage and clay
+
+```{r}
+altitude_genus %>% 
+  #filter(genus == "Aphelenchus") %>% 
+  ggplot(aes(clay,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "gray", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F, color = "black")+
+ # geom_line(data = gg2, aes(silt = x, y = ymin), size = 0.02) +
+  #  geom_line(data = gg2, aes(silt = x, y = ymax), size = 0.02)+
+  facet_wrap(~genus+tillage, nrow = 3)+
+  theme_minimal()+
+  labs(x = "Clay",
+       y = "Probability")+
+  theme(text = element_text(size = 18))
+
+ggsave("probability_clay_tillage_all_genus.png", dpi = 600, width = 14, height = 8, bg = "white")
+```
+
+### By sand and soil type
+
+```{r}
+altitude_genus %>% 
+  #filter(genus == "Aphelenchus") %>% 
+  ggplot(aes(sand,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "gray", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F,color = "black")+
+ # geom_line(data = gg2, aes(silt = x, y = ymin), size = 0.02) +
+  #  geom_line(data = gg2, aes(silt = x, y = ymax), size = 0.02)+
+  facet_wrap(~genus+soil, nrow = 3)+
+  theme_minimal()+
+  labs(x = "Sand",
+       y = "Probability")+
+  theme(text = element_text(size = 18))
+
+ggsave("probability_soil_all_genus.png", dpi = 600, width = 14,height = 8, bg = "white")
+```
+
+### By cropping and sand
+
+```{r}
+altitude_genus %>% 
+  #filter(genus == "Aphelenchus") %>% 
+  ggplot(aes(sand,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "gray", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F, color = "black")+
+ # geom_line(data = gg2, aes(silt = x, y = ymin), size = 0.02) +
+  #  geom_line(data = gg2, aes(silt = x, y = ymax), size = 0.02)+
+  facet_wrap(~genus+cropping, nrow = 3)+
+  theme_minimal()+
+  labs(x = "Sand",
+       y = "Probability")+
+  theme(text = element_text(size = 18))
+
+ggsave("probability_cropping_sand_all_genus.png", dpi = 600, width = 14, height = 8, bg = "white")
+```
+
+### By cropping and pH
+
+```{r}
+altitude_genus %>% 
+  #filter(genus == "Aphelenchus") %>% 
+  ggplot(aes(ph,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "gray", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F, color = "black",fullrange = T)+
+ # geom_line(data = gg2, aes(silt = x, y = ymin), size = 0.02) +
+  #  geom_line(data = gg2, aes(silt = x, y = ymax), size = 0.02)+
+  facet_wrap(~genus+cropping, nrow = 3)+
+  theme_minimal()+
+  labs(x = "pH gradient",
+       y = "Probability")+
+  theme(text = element_text(size = 18))
+
+ggsave("probability_cropping_ph_all_genus.png", dpi = 600, width = 14,height = 6, bg = "white")
+```
+
+### By sand
+
+```{r}
+altitude_genus %>% 
+  #filter(!genus %in% c("Aphelenchus","Criconematidae","Rotylenchulus")) %>% 
+  ggplot(aes(sand,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "gray", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F, color = "black")+
+ # geom_line(data = gg2, aes(silt = x, y = ymin), size = 0.02) +
+  #  geom_line(data = gg2, aes(silt = x, y = ymax), size = 0.02)+
+  facet_wrap(~genus, nrow = 2)+
+  ggthemes::theme_few()+
+  labs(x = "Sand",
+       y = "Probability")+
+  theme(text = element_text(size = 18),
+        axis.title = element_text(face = "bold"))
+
+ggsave("fig/probability_sand_genus.png", dpi = 600, width = 14, height = 6, bg = "white")
+```
+
+### By pH
+
+```{r}
+altitude_genus %>% 
+  #filter(genus == "Aphelenchus") %>% 
+  ggplot(aes(ph,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "gray", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F, color = "black")+
+ # geom_line(data = gg2, aes(silt = x, y = ymin), size = 0.02) +
+  #  geom_line(data = gg2, aes(silt = x, y = ymax), size = 0.02)+
+  facet_wrap(~genus, nrow = 2)+
+  ggthemes::theme_few()+
+  labs(x = "pH",
+       y = "Probability")+
+  theme(text = element_text(size = 18),
+        axis.title = element_text(face = "bold"))
+
+ggsave("fig/probability_ph_genus.png", dpi = 600, width = 14,height = 6, bg = "white")
+```
+
+### By clay
+
+```{r}
+altitude_genus %>% 
+ #filter(genus == "Aphelenchus") %>% 
+  ggplot(aes(clay,prob))+
+  geom_jitter(alpha = .9, size = 3, color = "gray", width = 0.01, height = 0.001)+
+ geom_smooth(method = "glm", size = 2, se = F, color = "black")+
+ # geom_line(data = gg2, aes(silt = x, y = ymin), size = 0.02) +
+  #  geom_line(data = gg2, aes(silt = x, y = ymax), size = 0.02)+
+  facet_wrap(~genus, nrow = 2)+
+  ggthemes::theme_few()+
+  labs(x = "Clay",
+       y = "Probability")+
+  theme(text = element_text(size = 18),
+        axis.title = element_text(face = "bold"))
+
+ggsave("fig/probability_clay_genus.png", dpi = 600, width = 14,height = 6, bg = "white")
+```
+
+# Random efect - Incidence
+
+## Estimation
+
+```{r}
+pratylenchus_groups_binomial = ranef(pratylenchus_glmer_binomial)
+pratylenchus_groups_binomial = as.data.frame(pratylenchus_groups_binomial)
+
+helicotylenchus_groups_binomial = ranef(helicotylenchus_glmer_binomial)
+helicotylenchus_groups_binomial = as.data.frame(helicotylenchus_groups_binomial)
+
+rotylenchulus_groups_binomial = ranef(rotylenchulus_glmer_binomial)
+rotylenchulus_groups_binomial = as.data.frame(rotylenchulus_groups_binomial)
+
+criconematidae_groups_binomial = ranef(criconematidae_glmer_binomial)
+criconematidae_groups_binomial = as.data.frame(criconematidae_groups_binomial)
+
+aphelenchus_groups_binomial = ranef(aphelenchus_glmer_binomial)
+aphelenchus_groups_binomial = as.data.frame(aphelenchus_groups_binomial)
+
+aphelenchoides_groups_binomial = ranef(aphelenchoides_glmer_binomial)
+aphelenchoides_groups_binomial = as.data.frame(aphelenchoides_groups_binomial)
+
+
+
+
+
+all_genus_binomial = rbind(pratylenchus_groups_binomial,helicotylenchus_groups_binomial,
+                  rotylenchulus_groups_binomial,criconematidae_groups_binomial,
+                  aphelenchus_groups_binomial,aphelenchoides_groups_binomial)
+
+nrow(aphelenchoides_groups_binomial)
+
+pratylenchus_name_binomial = replicate(21,"Pratylenchus")
+pratylenchus_name_binomial = as.data.frame(pratylenchus_name_binomial)
+colnames(pratylenchus_name_binomial)[1] = "genus"
+
+helicotylenchus_name_binomial = replicate(21,"Helicotylenchus")
+helicotylenchus_name_binomial = as.data.frame(helicotylenchus_name_binomial)
+colnames(helicotylenchus_name_binomial)[1] = "genus"
+
+rotylenchulus_name_binomial = replicate(21,"Rotylenchulus")
+rotylenchulus_name_binomial = as.data.frame(rotylenchulus_name_binomial)
+colnames(rotylenchulus_name_binomial)[1] = "genus"
+
+criconematidae_name_binomial = replicate(21,"Criconematidae")
+criconematidae_name_binomial = as.data.frame(criconematidae_name_binomial)
+colnames(criconematidae_name_binomial)[1] = "genus"
+
+aphelenchus_name_binomial = replicate(21,"Aphelenchus")
+aphelenchus_name_binomial = as.data.frame(aphelenchus_name_binomial)
+colnames(aphelenchus_name_binomial)[1] = "genus"
+
+aphelenchoides_name_binomial = replicate(21,"Aphelenchoides")
+aphelenchoides_name_binomial = as.data.frame(aphelenchoides_name_binomial)
+colnames(aphelenchoides_name_binomial)[1] = "genus"
+
+
+
+
+genus_binomial = rbind(pratylenchus_name_binomial,helicotylenchus_name_binomial,
+                    rotylenchulus_name_binomial,criconematidae_name_binomial,
+                    aphelenchus_name_binomial,aphelenchoides_name_binomial)
+
+all_genus_binomial = cbind(all_genus_binomial,genus_binomial)
+
+```
+
+## Plotting
+
+```{r}
+
+
+select_region_city_binomial = all_genus_binomial %>% 
+    filter(genus %in% c("Helicotylenchus","Pratylenchus","Aphelenchus",
+                      "Aphelenchoides","Rotylenchulus", "Criconematidae")) %>% 
+  filter(grpvar == "region:city")
+
+
+all_genus_binomial1 <- all_genus_binomial %>% #CORRIGIR O P-VALOR E OBTER PELO MÉTODO DE PSEUDO-VEROSSIMILHANÇA 
+  group_by(genus) %>%
+  summarise( 
+    n=n(),
+    mean=mean(condval),
+    sd=sd(condval)
+  ) %>%
+  mutate( se=sd/sqrt(n))  %>%
+  mutate( ic=se * qt((1-0.05)/2 + .5, n-1),
+          lower = (mean - 1.96*se),
+          upper = (mean + 1.96*se),
+          p_value = ((sd/sqrt(n)) * 1.96))
+
+
+summary(pratylenchus_glmer_binomial)
+confint(helicotylenchus_glmer_binomial)
+
+
+incidence = all_genus_binomial1 |> 
+  #filter(!genus == "Pratylenchus") |> 
+  ggplot(aes(reorder(genus,+mean), y = mean))+
+  geom_bar(stat = "identity", position = "dodge", fill = "darkgreen")+
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1,vjust = 1.2, size = 14),
+        text = element_text(size = 16))+
+  labs(x = "Morphological group",
+       y = "Random effect",
+       title = "Municipality/Region")
+
+```
+
+# Abundance - ordinal
+
+### Cross-validation
+
+```{r}
+library(ordinalNet)
+
+risk_helicotylenchus = helicotylenchus_ordinal$risk_category
+class(risk_helicotylenchus)
+
+helicotylenchus_ordinal_cv = helicotylenchus_ordinal
+
+helicotylenchus_ordinal_cv["samples"] = NULL
+helicotylenchus_ordinal_cv["ec"] = NULL
+helicotylenchus_ordinal_cv["altitute"] = NULL
+helicotylenchus_ordinal_cv["quantity"] = NULL
+helicotylenchus_ordinal_cv["risk_category"] = NULL
+
+x_ordinal_helicotylenchus = helicotylenchus_ordinal_cv
+x_ordinal_helicotylenchus = as.matrix(x_ordinal_helicotylenchus)
+class(x_ordinal_helicotylenchus)
+
+helicotylenchus_cv = ordinalNetCV(x_ordinal_helicotylenchus, risk_helicotylenchus,
+                                  tuneMethod=c("cvMisclass"),family = "cumulative", link = "logit",
+                                  lambdaMinRatio = 1e-04,printProgress = FALSE)
+summary(helicotylenchus_cv)
+colMeans(summary(helicotylenchus_cv))
+
+```
+
+Helicotylenchus model diagnostic (NÃO ESTÁ AJUSTANDO IGUAL O DE INCIDÊNCIA)
+
+```{r,eval = FALSE, echo = TRUE}
+#Model log with best
+helic_ordinal = clm(risk_category ~ tillage + cropping + soil + sand + clay  +
+                       ph,
+                     data = helicotylenchus_ordinal,link = "logit")
+
+
+summary(helic_ordinal)
+
+helic_predicted1 = helic_predicted |> 
+  filter(!risk_category == 2)
+
+pred_helicotylenchus_ordinal <- helic_predicted1$prob
+
+
+  
+
+
+#Better thresholds
+dat_helicotylenchus <- data.frame(1,helic_predicted1$risk_category, pred_helicotylenchus_ordinal)
+dat_helicotylenchus[dat_helicotylenchus$helic_predicted1.risk_category== "0",c("risk")] <- 0
+dat_helicotylenchus[dat_helicotylenchus$helic_predicted1.risk_category== "1",c("risk")] <-1
+dat_helicotylenchus["helic_predicted1.risk_category"] = NULL
+
+optimal.thresholds(dat_helicotylenchus)
+
+# Confusion matrix with the MAXsen+spe threshold
+confusionMatrix(data = as.factor(as.numeric(pred_helicotylenchus_ordinal > 0.9)),  mode= "everything",  reference = as.factor(helicotylenchus_log$incidence))
+
+
+#Plot
+auc.roc.plot(dat_helicotylenchus)
+calibration.plot(dat_helicotylenchus)
+
+error.threshold.plot(dat_helicotylenchus, opt.methods = 3) #takes a single model and plots the sensitivity and specificity as a function of threshold. 
+pcc(cmx(dat_helicotylenchus), st.dev = TRUE) #calculates the percent correctly classified and (optionally) the associated standard deviation from a confusion matrix.
+
+presence.absence.accuracy(dat_helicotylenchus,threshold=.9,st.dev=FALSE) #Calculates five accuracy measures (pcc, sensitivity, specificity, Kappa, and AUC)
+presence.absence.summary(dat_helicotylenchus) #Produces four types of Presence/Absence accuracy plots for a single set of model Predictions
+
+roc_helicotylenchus <- roc.plot.calculate(dat_helicotylenchus) #data frame
+
+roc_helicotylenchus |> 
+  ggplot(aes(threshold, sensitivity))+
+  geom_line()+
+  geom_line(aes(threshold, specificity))+
+  geom_line(aes(threshold, Kappa))
+
+
+#LOOCV
+acc_helicotylenchus <- NULL
+for(i in 1:nrow(helicotylenchus_log))
+{
+    # Train-test splitting
+    # 499 samples -> fitting
+    # 1 sample -> testing
+    train <- helicotylenchus_log[-i,]
+    test <- helicotylenchus_log[i,]
+    
+    # Fitting
+    model <- glm(incidence ~ altitute + tillage_corrigido + cropping_corrigido + soil_corrigido + sand + clay + ph, data = helicotylenchus_log,
+                family = binomial(link = "logit"))
+    
+    # Predict results
+    results_prob <- predict(model,test,type='response')
+    
+    # If prob > 0.5 then 1, else 0
+    results <- ifelse(results_prob > 0.9,1,0)
+    
+    # Actual answers
+    answers <- test$incidence
+    
+    # Calculate accuracy
+    misClasificError <- mean(answers != results)
+    
+    # Collecting results
+    acc_helicotylenchus[i] <- 1-misClasificError
+}
+
+# Average accuracy of the model
+mean(acc_helicotylenchus)
+
+
+
+```
+
+### Cross-validation
+
+```{r}
+
+risk_pratylenchus = pratylenchus_ordinal$risk_category
+class(risk_pratylenchus)
+
+pratylenchus_ordinal_cv = pratylenchus_ordinal
+
+pratylenchus_ordinal_cv["samples"] = NULL
+pratylenchus_ordinal_cv["ec"] = NULL
+pratylenchus_ordinal_cv["altitute"] = NULL
+pratylenchus_ordinal_cv["quantity"] = NULL
+pratylenchus_ordinal_cv["risk_category"] = NULL
+
+x_ordinal_pratylenchus = pratylenchus_ordinal_cv
+x_ordinal_pratylenchus = as.matrix(x_ordinal_pratylenchus)
+class(x_ordinal_pratylenchus)
+
+pratylenchus_cv = ordinalNetCV(x_ordinal_pratylenchus, risk_pratylenchus,family = "cumulative", link = "logit",
+                                  tuneMethod=c("cvMisclass"),lambdaMinRatio = 1e-04,printProgress = FALSE)
+summary(pratylenchus_cv)
+colMeans(summary(pratylenchus_cv))
+
+```
+
+### Cross-validation
+
+```{r}
+
+risk_criconematidae = criconematidae_ordinal$risk_category
+class(risk_criconematidae)
+
+criconematidae_ordinal["samples"] = NULL
+criconematidae_ordinal["ec"] = NULL
+criconematidae_ordinal["altitute"] = NULL
+criconematidae_ordinal["quantity"] = NULL
+criconematidae_ordinal["risk_category"] = NULL
+
+x_ordinal_criconematidae = criconematidae_ordinal
+x_ordinal_criconematidae = as.matrix(x_ordinal_criconematidae)
+class(x_ordinal_criconematidae)
+
+criconematidae_cv = ordinalNetCV(x_ordinal_criconematidae, risk_criconematidae, 
+                                  tuneMethod="cvMisclass",family = "cumulative", link = "logit",
+                                  lambdaMinRatio = 1e-04,printProgress = FALSE)
+summary(criconematidae_cv)
+colMeans(summary(criconematidae_cv))
+
+```
+
+
+# Modelagem da abundância
+
+```{r}
+summary(aphelenchus_glmer)
+check_singularity(aphelenchus_glmer)
+check_overdispersion(aphelenchus_glmer)
+model_performance(aphelenchus_glmer)
+check_model(aphelenchus_glmer)
+
+#ggsave("model_check/check_aphelenchus_abundance_glmm.png", bg = "white", dpi = 600, width = 12)
+
+
+
+aphelenchus_res <- simulateResiduals(aphelenchus_glmer)
+plot(aphelenchus_res)
+
+
+
+
+###################
+
+summary(aphelenchoides_glmer)
+check_singularity(aphelenchoides_glmer)
+check_overdispersion(aphelenchoides_glmer)
+model_performance(aphelenchoides_glmer)
+check_model(aphelenchoides_glmer)
+
+#ggsave("model_check/check_aphelenchoides_abundance_glmm.png", bg = "white", dpi = 600, width = 12)
+
+
+aphelenchoides_res <- simulateResiduals(aphelenchoides_glmer)
+plot(aphelenchoides_res)
+
+####################
+
+
+summary(pratylenchus_glmer)
+check_singularity(pratylenchus_glmer)
+check_overdispersion(pratylenchus_glmer)
+model_performance(pratylenchus_glmer)
+check_model(pratylenchus_glmer)
+
+#ggsave("model_check/check_pratylenchus_abundance_glmm.png", bg = "white", dpi = 600, width = 12)
+
+
+pratylenchus_res <- simulateResiduals(pratylenchus_glmer)
+plot(pratylenchus_res)
+
+######################
+
+
+summary(helicotylenchus_glmer)
+check_singularity(helicotylenchus_glmer)
+check_overdispersion(helicotylenchus_glmer)
+model_performance(helicotylenchus_glmer)
+check_model(helicotylenchus_glmer)
+
+#ggsave("model_check/check_helicotylenchus_abundance_glmm.png", bg = "white", dpi = 600, width = 12)
+
+
+helicotylenchus_res <- simulateResiduals(helicotylenchus_glmer)
+plot(helicotylenchus_res)
+
+
+#######################
+
+
+
+summary(rotylenchulus_glmer)
+check_singularity(rotylenchulus_glmer)
+check_overdispersion(rotylenchulus_glmer)
+model_performance(rotylenchulus_glmer)
+check_model(rotylenchulus_glmer)
+
+#ggsave("model_check/check_rotylenchulus_abundance_glmm.png", bg = "white", dpi = 600, width = 12)
+
+
+rotylenchulus_res <- simulateResiduals(rotylenchulus_glmer)
+plot(rotylenchulus_res)
+
+######################
+
+
+
+summary(criconematidae_glmer)
+check_singularity(criconematidae_glmer)
+check_overdispersion(criconematidae_glmer)
+model_performance(criconematidae_glmer)
+check_model(criconematidae_glmer)
+
+#ggsave("model_check/check_rotylenchulus_abundance_glmm.png", bg = "white", dpi = 600, width = 12)
+
+
+criconematidae_res <- simulateResiduals(criconematidae_glmer)
+plot(criconematidae_res)
+```
+
+# Random efect - Abundance
+
+## Estimation
+
+```{r}
+pratylenchus_groups = ranef(pratylenchus_glmer)
+pratylenchus_groups = as.data.frame(pratylenchus_groups)
+
+helicotylenchus_groups = ranef(helicotylenchus_glmer)
+helicotylenchus_groups = as.data.frame(helicotylenchus_groups)
+
+rotylenchulus_groups = ranef(rotylenchulus_glmer)
+rotylenchulus_groups = as.data.frame(rotylenchulus_groups)
+
+criconematidae_groups = ranef(criconematidae_glmer)
+criconematidae_groups = as.data.frame(criconematidae_groups)
+
+aphelenchus_groups = ranef(aphelenchus_glmer)
+aphelenchus_groups = as.data.frame(aphelenchus_groups)
+
+aphelenchoides_groups = ranef(aphelenchoides_glmer)
+aphelenchoides_groups = as.data.frame(aphelenchoides_groups)
+
+
+
+
+
+all_genus = rbind(pratylenchus_groups,helicotylenchus_groups,rotylenchulus_groups,
+                  criconematidae_groups,aphelenchus_groups,aphelenchoides_groups)
+
+nrow(aphelenchoides_groups)
+
+pratylenchus_name = replicate(217,"Pratylenchus")
+pratylenchus_name = as.data.frame(pratylenchus_name)
+colnames(pratylenchus_name)[1] = "genus"
+
+helicotylenchus_name = replicate(286,"Helicotylenchus")
+helicotylenchus_name = as.data.frame(helicotylenchus_name)
+colnames(helicotylenchus_name)[1] = "genus"
+
+rotylenchulus_name = replicate(22,"Rotylenchulus")
+rotylenchulus_name = as.data.frame(rotylenchulus_name)
+colnames(rotylenchulus_name)[1] = "genus"
+
+criconematidae_name = replicate(76,"Criconematidae")
+criconematidae_name = as.data.frame(criconematidae_name)
+colnames(criconematidae_name)[1] = "genus"
+
+aphelenchus_name = replicate(259,"Aphelenchus")
+aphelenchus_name = as.data.frame(aphelenchus_name)
+colnames(aphelenchus_name)[1] = "genus"
+
+aphelenchoides_name = replicate(209,"Aphelenchoides")
+aphelenchoides_name = as.data.frame(aphelenchoides_name)
+colnames(aphelenchoides_name)[1] = "genus"
+
+
+
+
+genus = rbind(pratylenchus_name,helicotylenchus_name,rotylenchulus_name,
+              criconematidae_name,aphelenchus_name,aphelenchoides_name)
+
+all_genus = cbind(all_genus,genus)
+
+select_region_city_samples = all_genus %>% 
+    filter(genus %in% c("Helicotylenchus","Pratylenchus","Aphelenchus",
+                      "Aphelenchoides","Rotylenchulus", "Criconematidae")) %>% 
+  filter(grpvar == "region:city:samples")
+
+select_region_city = all_genus %>% 
+    filter(genus %in% c("Helicotylenchus","Pratylenchus","Aphelenchus",
+                      "Aphelenchoides","Rotylenchulus", "Criconematidae")) %>% 
+  filter(grpvar == "region:city")
+
+
+
+colnames(select_region_city_samples) = c("group","term","grp","mean","sd","genus")
+colnames(select_region_city) = c("group","term","grp","mean","sd","genus")
+
+all_genus1 <- all_genus %>%
+  group_by(grpvar,genus) %>%
+  summarise( 
+    n=n(),
+    mean=mean(condval),
+    sd=sd(condval)
+  ) %>%
+  mutate( se=sd/sqrt(n))  %>%
+  mutate( ic=se * qt((1-0.05)/2 + .5, n-1),
+    lower = (mean - 1.96*se),
+    upper = (mean + 1.96*se))
+    #p_value = ((sd/sqrt(n)) * 1.96))
+
+```
+
+## Plotting
+```{r}
+all_genus1 %>% 
+    filter(genus %in% c("Helicotylenchus","Pratylenchus","Aphelenchus",
+                      "Aphelenchoides","Rotylenchulus", "Criconematidae")) %>% 
+ # filter(grpvar == "soil:city:altitute") %>% 
+  ggplot(aes(genus,mean))+
+  geom_bar(stat = "identity", position = "dodge")+
+  facet_wrap(~grpvar)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+# Environmental
+
+```{r}
+summary(praty_log)
+check_singularity(praty_log)
+model_performance(praty_log)
+check_model(praty_log)
+
+
+
+check_model(heli_log)
+model_performance(heli_log)
+
+
+check_model(rotyl_log)
+model_performance(rotyl_log)
+
+check_model(rotyl_log)
+model_performance(rotyl_log)
+
+check_model(aphel_log)
+model_performance(aphel_log)
+
+
+check_model(aphels_log)
+model_performance(aphels_log)
+```
+

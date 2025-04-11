@@ -33,7 +33,9 @@ library(lmtest)
 #Data importation
 
 ```{r}
-population = gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1YSK-g-vGZLTVZBPNpH0mo8oQZ6FkMH8xwdb-bs-ee2s/edit?usp=sharing")
+#population = gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1YSK-g-vGZLTVZBPNpH0mo8oQZ6FkMH8xwdb-bs-ee2s/edit?usp=sharing")
+
+population = read.csv("data/descriptive.csv")
 
 #Total abundance in falcon tube (20 mL)
 
@@ -124,6 +126,25 @@ population_incidence_tillage %>%
   )
 
 ```
+```{r}
+number_tillage = population %>% 
+  #filter(!region %in% c("North","Northwest")) %>% 
+  group_by(samples,tillage) %>% 
+  summarise(
+    n = sum(quantity)
+  )
+
+unique(number_tillage$tillage)
+
+number_tillage %>% 
+  filter(tillage == "No-till")
+
+number_tillage %>% 
+  filter(tillage == "Minimum")
+
+number_tillage %>% 
+  filter(tillage == "Conventional")
+```
 
 ## By cropping
 
@@ -146,6 +167,21 @@ population_incidence_cropping %>%
   summarise(
     n = n()
   )
+```
+```{r}
+number_cropping = population %>% 
+  group_by(samples,cropping) %>% 
+  summarise(
+    n = sum(quantity)
+  )
+
+unique(number_cropping$cropping)
+
+number_cropping %>% 
+  filter(cropping == "Corn_soybean")
+
+number_cropping %>% 
+  filter(cropping == "Corn_others")
 ```
 
 ## By soil
@@ -203,6 +239,33 @@ nematode_incidence = count(population_incidence_soil)
 nematode_incidence
 ```
 
+```{r}
+number_soil = population %>% 
+  group_by(samples,soil) %>% 
+  summarise(
+    n = sum(quantity)
+  )
+
+unique(number_soil$soil)
+
+number_soil %>% 
+  filter(soil == "Argissolo")
+
+number_soil %>% 
+  filter(soil == "Cambissolo")
+
+number_soil %>% 
+  filter(soil == "Chernossolo")
+
+number_soil %>% 
+  filter(soil == "Gleissolo")
+
+number_soil %>% 
+  filter(soil == "Latossolo")
+
+number_soil %>% 
+  filter(soil == "Neossolo")
+```
 
 # Diversity 
 
@@ -411,29 +474,34 @@ region_mean
 
 ```{r}
   region_density = region_mean %>% 
-    filter(!region %in% c("North","Northwest")) %>% 
+    #filter(!region %in% c("North","Northwest")) %>% 
    filter(genus %in% c("Aphelenchus","Aphelenchoides","Criconematidae","Rotylenchulus",
                        "Pratylenchus","Helicotylenchus")) %>% 
    ggplot(aes(reorder(genus,+mean_density), mean_density))+
-  geom_bar(stat = "identity", position = "dodge", fill = "steelblue")+
-   theme_minimal()+
+  geom_bar(stat = "identity", position = "dodge", fill = "black")+
+  scale_y_continuous(breaks = seq(0, 3000, by = 500)) +
+  ggthemes::theme_few()+
    labs( x = "Morphological group",
          y = "Mean density (nematodes/100 cm³)")+
- theme(text = element_text(size = 20))+
-    facet_wrap(~region)+
-    coord_flip()
+ theme(text = element_text(size = 14, face = "bold"),
+       axis.text.x = element_text(angle = 45,vjust = 1, hjust = 1))+
+    facet_wrap(~region)
 
- #ggsave("mean_density_region.png", bg = "white", dpi = 600, width = 14, height = 10)
+ ggsave("fig/mean_density_region.png", bg = "white", dpi = 600, width = 14, height = 10)
 
 region_density
+
+
 ```
+
+
 
 ```{r}
 
 # Supplementary 
 
   region_mean %>% 
-    filter(!region %in% c("North","Northwest")) %>% 
+    #filter(!region %in% c("North","Northwest")) %>% 
    filter(!genus %in% c("Aphelenchus","Aphelenchoides","Criconematidae","Rotylenchulus",
                        "Pratylenchus","Helicotylenchus")) %>% 
    ggplot(aes(reorder(genus,+mean_density), mean_density))+
@@ -493,6 +561,24 @@ region_mean
  
  city_mean
 ```
+```{r}
+city_mean %>% 
+filter(!genus %in% c("Aphelenchus","Aphelenchoides","Criconematidae","Rotylenchulus",
+                       "Pratylenchus","Helicotylenchus")) %>%
+ggplot(aes(city,mean_density)) +
+    geom_bar(stat = "identity", position = "dodge", fill = "#041e39")+
+  facet_wrap(~genus, ncol = 3)+
+  ggthemes::theme_few()+
+  #scale_y_continuous(breaks = seq(0, 600, by = 100)) +
+  labs(x = "Municipality", y = "Mean density (nematodes/100 cm³)") +
+  theme(text = element_text(size = 12),
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust =1),
+        axis.title = element_text(face = "bold"),
+        strip.text = element_text(face = "italic"))
+
+
+ ggsave("fig/mean_density_city.png", dpi = 600, bg = "white", width = 10, height = 8)
+```
 
 ## By sample
 
@@ -544,15 +630,17 @@ region_mean
 
 ```{r}
   soil_density = population %>% 
-  filter(soil %in% c("Latossolo","Argissolo","Cambissolo")) %>% 
-  filter(quantity > 0) %>% 
-  group_by(genus,soil) %>% 
-  summarise(
+  dplyr::filter(soil %in% c("Latossolo","Argissolo","Cambissolo")) %>% 
+  dplyr::filter(quantity > 0) %>% 
+  dplyr::group_by(genus,soil) %>% 
+  dplyr::reframe(
     n = n(),
-      quantity = sum(quantity)) %>%  
-  group_by(genus,soil) %>% 
-  summarise(
-        mean_density = quantity/n
+      quantity2 = sum(quantity),
+    sd = sd(quantity)) %>%  
+  dplyr::group_by(genus,soil) %>% 
+  dplyr::reframe(
+        mean_density = quantity2/n,
+        sd = sd/n
   )
 
 soil_density[soil_density$soil== "Latossolo",c("soil_goias")] <- "Latosol"
@@ -562,28 +650,34 @@ soil_density[soil_density$soil== "Argissolo",c("soil_goias")] <- "Argisol"
 
 # graphic for more expressive
 
-soil_density %>% 
+soil_graphic = soil_density %>% 
   filter(genus %in% c("Helicotylenchus","Rotylenchulus","Pratylenchus","Aphelenchoides",
                        "Aphelenchus", "Criconematidae")) %>% 
-  ggplot(aes(reorder(genus,+mean_density), mean_density))+
-  geom_bar(stat = "identity", position = "dodge", fill = "steelblue")+
-  theme_minimal()+
-  labs(x = "Morphological group",
-         y = "Mean density (nematodes/100 cm³)")+
-  theme(text = element_text(size = 20))+
-  facet_wrap(~soil_goias)+
-  coord_flip()
+  ggplot(aes(reorder(genus,+mean_density), mean_density,
+             group = soil_goias, fill = soil_goias))+
+  geom_bar(stat = "identity", position = "dodge")+
+  scale_y_continuous(breaks = seq(0, 600, by = 100)) +
+  scale_fill_viridis_d(option = "E")+
+   ggthemes::theme_few()+
+  labs(x = "",
+         y = "",
+       fill = "Soil")+
+ theme(text = element_text(size = 14),
+       axis.title = element_text(face = "bold"),
+       #axis.text.y = element_text(face = "italic"),
+       axis.text.x = element_blank()) #angle = 45, vjust = 1, hjust = 1,face = "italic"
 
-ggsave("fig/soil_mean_density.png", dpi = 600, bg = "white", width = 12, height = 8)
+ggsave("fig/soil_mean_density.png", dpi = 600, bg = "white", width = 10, height = 6)
 
 
+```
 
+```{r}
 soil_density %>% 
   filter(genus %in% c("Helicotylenchus","Rotylenchulus","Pratylenchus","Aphelenchoides",
                        "Aphelenchus", "Criconematidae"))
 
 count(soil_density)
-
 ```
 
 ## By cropping
@@ -610,32 +704,47 @@ cropping_density[cropping_density$cropping== "Corn_soybean",c("cropping_practice
 cropping_density[cropping_density$cropping== "Corn_others",c("cropping_practice")] <- "Rotation"
 
 corn_soybean = cropping_density %>% 
-  filter(cropping_practice == "Succession") %>% 
-  ggplot(aes(reorder(genus,+mean_density) , y = mean_density, group = genus)) +
-  geom_bar(stat = "identity", position = "dodge", fill = "steelblue")+
-  theme_minimal()+
-  facet_wrap(~cropping_practice)+
-  coord_flip()+
-  labs(x = "Morphological group",
-       y = "Mean density (nematodes/100 cm³)")+
-  theme(text = element_text(size = 18))
+  filter(genus %in% c("Helicotylenchus","Rotylenchulus","Pratylenchus","Aphelenchoides",
+                       "Aphelenchus", "Criconematidae")) %>% 
+  #filter(cropping_practice == "Succession") %>% 
+  ggplot(aes(reorder(genus,+mean_density) , y = mean_density,
+             group = cropping_practice, fill = cropping_practice)) +
+  geom_bar(stat = "identity", position = "dodge")+
+  ggthemes::theme_few()+
+  scale_fill_viridis_d(option = "E")+
+  scale_y_continuous(breaks = seq(0, 500, by = 100)) +
+  labs(x = "",
+       y = "Mean density (nematodes/100 cm³)",
+       fill = "Cropping")+
+   theme(text = element_text(size = 14),
+       axis.title = element_text(face = "bold"),
+       #axis.text.y = element_text(face = "italic"),
+       axis.text.x = element_blank()) #
 
 corn_others = cropping_density %>% 
-  filter(cropping_practice == "Rotation") %>% 
+  #filter(cropping_practice == "Rotation") %>% 
   ggplot(aes(reorder(genus,+mean_density) , y = mean_density, group = genus)) +
   geom_bar(stat = "identity", position = "dodge", fill = "steelblue")+
-  theme_minimal()+
-  facet_wrap(~cropping_practice)+
-  coord_flip()+
+  ggthemes::theme_few()+
+  scale_y_continuous(limits = c(0, 500),breaks = seq(0, 500, by = 50))+
   labs(x = "",
        y = "Mean density (nematodes/100 cm³)")+
-  theme(text = element_text(size = 18))
+  theme(text = element_text(size = 14),
+       axis.title = element_text(face = "bold"),
+       axis.text.y = element_text(face = "italic"),
+       axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))+
+  facet_wrap(~cropping_practice)+
+  coord_flip()
 
 plot_grid(corn_soybean,corn_others, label_size = 32)
  
 ggsave("fig/cropping_density_histogram.png", 
-       dpi = 600, width = 14, height = 8, bg = "white")
+       dpi = 600, width = 10, height = 6, bg = "white")
 
+
+```
+
+```{r}
 cropping_density %>% 
  # filter(genus %in% c("Hoplolaimus","Xiphinema","Longidorus","Paratrichodorus","Trichodorus",
                      # "Rotylenchus","Angunidae","Scutellonema","Hemicycliophora")) %>% 
@@ -663,29 +772,99 @@ tillage_density = population %>%
 count(tillage_density)
 
 
-tillage_density %>% 
-  #filter(genus %in% c("Aphelenchus","Aphelenchoides","Criconematidae","Rotylenchulus",
-    #               "Pratylenchus","Helicotylenchus")) %>% 
-  ggplot(aes(reorder(genus,+mean_density), mean_density))+
-  geom_bar(stat = "identity", position = "dodge", fill = "steelblue")+
-  theme_minimal()+
+tillage_graphic = tillage_density %>% 
+  filter(genus %in% c("Aphelenchus","Aphelenchoides","Criconematidae","Rotylenchulus",
+                  "Pratylenchus","Helicotylenchus")) %>% 
+  ggplot(aes(reorder(genus,+mean_density), mean_density,
+             group = tillage, fill = tillage))+
+  geom_bar(stat = "identity", position = "dodge")+
+  ggthemes::theme_few()+
+  scale_fill_viridis_d(option = "E")+
+  scale_y_continuous(limits = c(0, 500),,breaks = seq(0, 500, by = 100))+
   labs(x = "Morphological group",
-       y = "Mean density (nematodes/100 cm³)")+
-  facet_wrap(~tillage)+
-  coord_flip()+
-  theme(text = element_text(size = 18))
+       y = "",
+       fill = "Tillage")+
+    theme(text = element_text(size = 14),
+       axis.title = element_text(face = "bold"),
+       #axis.text.y = element_text(face = "italic"),
+       axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1,face = "italic"))
 
-ggsave("fig/tillage_density.png", bg = "white", dpi = 600, height = 8, width = 14)
+ggsave("fig/tillage_density.png", bg = "white", dpi = 600, width = 10, height = 6)
 
 tillage_density %>% 
 filter(!genus %in% c("Aphelenchus","Aphelenchus","Aphelenchoides","Criconematidae",
                        "Helicotylenchus","Rotylenchulus")) %>% 
   group_by(tillage) %>% 
   summarise(
-    
     mean = mean(mean_density),
-    sd = sd(mean_density)
+    sd = sd(mean_density))
+```
+
+## Altitude
+```{r}
+
+population <- population %>%
+  dplyr::mutate(altitute = case_when(altitute >= 0 ~ altitute,
+                                altitute == NA_character_ ~ 0 )) %>% 
+  dplyr::mutate(altitude_range = case_when(
+    altitute <= 400 ~ "280 to 400",
+    altitute <= 600  ~ "401 to 600",
+    altitute <= 800 ~ "601 to 800",
+    altitute <= 1000 ~ "801 to 1000",
+    altitute > 1000 ~"Above 1001"
+  ))
+
+altitude_density = population %>% 
+  filter(quantity >0) %>% 
+  group_by(genus,altitude_range) %>% 
+  summarise(
+    n = n(),
+      quantity = sum(quantity)) %>% 
+  group_by(genus,altitude_range) %>% 
+  summarise(
+    mean_density = quantity/n
   )
+
+altitude_density
+```
+
+```{r}
+altitude_graphic = altitude_density %>% 
+  filter(genus %in% c("Aphelenchus","Aphelenchoides","Criconematidae","Rotylenchulus",
+                  "Pratylenchus","Helicotylenchus")) %>% 
+  ggplot(aes(altitude_range, mean_density,
+             group = altitude_range))+
+  geom_bar(stat = "identity", position = "dodge", fill = "#041e39")+
+  ggthemes::theme_few()+
+  scale_fill_viridis_d(option = "E")+
+  scale_y_continuous(limits = c(0, 950),breaks = seq(0, 950, by = 150))+
+  labs(x = "Altitude (m)",
+       y = "Mean density (nematodes/100 cm³)",
+       fill = "Altitude")+
+    theme(text = element_text(size = 12),
+       axis.title = element_text(face = "bold"),
+       #axis.text.y = element_text(face = "italic"),
+       axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+       strip.text = element_text(face = "italic"))+
+  facet_wrap(~genus)
+
+altitude_graphic
+```
+
+## Joining
+```{r}
+library(patchwork)
+(soil_graphic/corn_soybean/tillage_graphic)
+
+ggsave("fig/soil_tillage_cropping-density.png", dpi = 600,
+       width = 10, height = 8)
+```
+
+```{r}
+altitude_graphic
+
+ggsave("fig/altitude.png", dpi = 600,
+       width = 8, height = 6)
 ```
 
 # Abundance (Supplementary)
@@ -712,7 +891,9 @@ mean_abundance
 ```{r}
 #City
  
- city_abundance = population %>% 
+ city_abundance = population %>%
+     filter(genus %in% c("Aphelenchus","Aphelenchoides","Criconematidae",
+                       "Helicotylenchus","Pratylenchus","Rotylenchulus")) %>%
    group_by(genus,city) %>% 
    summarise(
      mean = mean(quantity)
@@ -720,6 +901,18 @@ mean_abundance
  
 
  city_abundance
+ 
+  city_abundance2 = population %>% 
+  filter(genus %in% c("Aphelenchus","Aphelenchoides","Criconematidae",
+                      "Helicotylenchus","Pratylenchus","Rotylenchulus")) %>%
+  group_by(genus) %>% 
+  summarise(
+    mean = mean(quantity),
+    sd = sd(quantity),
+    n = n(),  # Conta o número de observações
+    se = sd / sqrt(n)  # Calcula o erro padrão
+  )
+
 ```
 
 ```{r}
@@ -759,30 +952,47 @@ mean_abundance
 
 ```
 
-```{r}
- #Graphic
-  
- city_abundance %>% 
-   filter(genus %in% c("Aphelenchus","Aphelenchoides","Criconematidae",
-                       "Helicotylenchus","Pratylenchus","Rotylenchulus")) %>% 
-   ggplot(aes(city,mean, fill = genus))+
-   geom_bar(stat = "identity")+
-   #facet_wrap(~genus)+
-   coord_flip()+
-   scale_fill_viridis_d()+
-   theme_minimal()+
-   labs(x = "City",
-        y = "Mean abundance",
-        fill = "Morphological group")+
-   theme(text = element_text(size = 14),
-         legend.position = "right",
-         legend.text = element_text(face = "italic"))
- 
 
+
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+ggplot(city_abundance,aes(genus,mean)) +
+    geom_boxplot(color = "black", size = 1)+
+  geom_jitter(width = 0.1, size = 2, alpha = 0.5, color = "gray") +
+  #geom_pointrange(data = city_abundance2, aes(x = fct_reorder(genus, mean), y = mean, 
+   #                                           ymin = mean - se, ymax = mean + se),
+    #              color = "black", size = 0.5) +
+  scale_y_continuous(breaks = seq(0, 650, by = 50)) +
+  ggthemes::theme_few()+
+  labs(x = "Morphological groups", y = "Mean abundance (nematodes per city)") +
+  theme(text = element_text(size = 16),
+        axis.text.x = element_text(face = "italic",angle = 45, vjust = 1, hjust =1),
+        axis.title = element_text(face = "bold"))
+
+
+city_abundance %>% 
+filter(genus %in% c("Aphelenchus","Aphelenchoides","Criconematidae","Rotylenchulus",
+                       "Pratylenchus","Helicotylenchus")) %>%
+ggplot(aes(city,mean)) +
+    geom_bar(stat = "identity", position = "dodge", fill = "#041e39")+
+  facet_wrap(~genus)+
+  ggthemes::theme_few()+
+  scale_y_continuous(breaks = seq(0, 600, by = 100)) +
+  labs(x = "Municipality", y = "Mean abundance (cm³)") +
+  theme(text = element_text(size = 12),
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust =1),
+        axis.title = element_text(face = "bold"),
+        strip.text = element_text(face = "italic"))
+
+
+ ggsave("fig/abundance_city2.png", dpi = 600, bg = "white", width = 10, height = 6)
 ```
 
 ```{r}
- ggsave("fig/abundance_genus_city.png", dpi = 600, bg = "white", width = 14, height = 8)
+ ggsave("fig/abundance_city.png", dpi = 600, bg = "white", width = 10, height = 6)
 ```
 
 ## By city and morphological group
@@ -1152,31 +1362,36 @@ if ("sf" %in% class(all_genus_map)) {
     st_drop_geometry()  # Remove a geometria para evitar conflitos
 }
 
+goias <- brazil %>% filter(NAME_1 == "Goiás")
+
+
 # Plot com ggplot2
 ggplot() +
   # Plot do mapa do Brasil
-  geom_sf(data = brazil, fill = NA, color = "grey50") +
-  
+  geom_sf(data = brazil,fill = NA,color = "grey50") +
+  geom_sf(data = goias, fill = NA, color = "black", size = 2) +
   # Plot dos pontos (dados de nematoides)
   geom_jitter(
     data = all_genus_map, 
-    aes(x = long, y = lat, size = quantity),
-    alpha = 1/2
+    aes(x = long, y = lat, size = quantity),color = "#041e39"
   ) +
   
   # Ajuste da projeção
   coord_sf(xlim = c(-55, -45), ylim = c(-20, -12.5)) +
   
   # Ajuste de temas e rótulos
-  theme_minimal() +
-  theme(legend.position = "top", panel.spacing = unit(1, "lines")) +
+  ggthemes::theme_few()+
+  theme(legend.position = "top", panel.spacing = unit(1, "lines"),
+        strip.text = element_text(face = "italic", size = 12),
+        axis.title = element_text(size = 12, face = "bold"),
+        legend.title = element_text(size = 12, face = "bold")) +
   labs(x = "Longitude", y = "Latitude") +
   scale_size_continuous(name = "Mean density") +
   
   # Facet para dividir por gênero de nematoide
   facet_wrap(~genus)
 
-ggsave("fig/groups_goias.png", width = 6, height = 6, dpi = 600, bg = "white")
+ggsave("fig/groups_goias.png", width = 8, height = 6, dpi = 600, bg = "white")
 ```
 
 ## By tillage

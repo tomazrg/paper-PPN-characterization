@@ -33,7 +33,9 @@ library(lmtest)
 # Incidence
 
 ```{r}
-incidence = gsheet2tbl("https://docs.google.com/spreadsheets/d/1gr-TUpB-mNAhZVOBEcmHRwE1etorOeJvlhjcu7wEpz4/edit?usp=sharing")
+#incidence = gsheet2tbl("https://docs.google.com/spreadsheets/d/1gr-TUpB-mNAhZVOBEcmHRwE1etorOeJvlhjcu7wEpz4/edit?usp=sharing")
+
+incidence = read.csv("data/spatial_incidence.csv")
 
 head(incidence)
 ```
@@ -52,37 +54,6 @@ incidence[incidence$tillage== "No-till",c("tillage_corrigido")] <- 1
 incidence[incidence$tillage== "Minimum",c("tillage_corrigido")] <- 1
 incidence[incidence$tillage== "Conventional",c("tillage_corrigido")] <- 2
 
-
-#incidence = incidence %>% 
- # filter(!city %in% c("DFL","DFC"))
-
-
- incidence[incidence$city== "Abadiânia",c("samples_n")] <- 7
- incidence[incidence$city== "Acreúna",c("samples_n")] <- 15
- incidence[incidence$city== "Alexânia",c("samples_n")] <- 10
- incidence[incidence$city== "Alto Paraiso",c("samples_n")] <- 5
- incidence[incidence$city== "Barro Alto",c("samples_n")] <- 8
- incidence[incidence$city== "Bom Jesus de Goiás",c("samples_n")] <- 15
- incidence[incidence$city== "Cabeceiras",c("samples_n")] <- 5
- incidence[incidence$city== "Caiâponia",c("samples_n")] <- 15
- incidence[incidence$city== "Ceres",c("samples_n")] <- 15
- incidence[incidence$city== "Cristalina",c("samples_n")] <- 15
- incidence[incidence$city== "Doverlândia",c("samples_n")] <- 15
- incidence[incidence$city== "Firminópolis",c("samples_n")] <- 5
- incidence[incidence$city== "Formosa",c("samples_n")] <- 5
- incidence[incidence$city== "Jataí",c("samples_n")] <- 15
- incidence[incidence$city== "Luziânia",c("samples_n")] <- 15
- incidence[incidence$city== "Mineiros",c("samples_n")] <- 15
- incidence[incidence$city== "Montividiu",c("samples_n")] <- 15
- incidence[incidence$city== "Nova Crixás",c("samples_n")] <- 5 
- incidence[incidence$city== "Planaltina",c("samples_n")] <- 15
- incidence[incidence$city== "Porangatu",c("samples_n")] <-  15
- incidence[incidence$city== "Portelândia",c("samples_n")] <- 15
- incidence[incidence$city== "Rio Verde",c("samples_n")] <- 15
- incidence[incidence$city== "São Miguel do Passo Quatro",c("samples_n")] <- 15
- incidence[incidence$city== "Serranópolis",c("samples_n")] <- 10
- incidence[incidence$city== "Silvânia",c("samples_n")] <- 15
- incidence[incidence$city== "Vianópolis",c("samples_n")] <- 15
 ```
 
 ## By Aphelenchus
@@ -93,17 +64,15 @@ incidence[incidence$tillage== "Conventional",c("tillage_corrigido")] <- 2
 
 aphelenchus = incidence %>% 
   filter(genus == "Aphelenchus") |> 
-  filter(soil_corrigido %in% c("2","5","6")) |> 
+  filter(soil_corrigido %in% c("2","5","6")) %>% 
   filter(region %in% c("South","Southwest","Center","East"))
 
   
-aphelenchus_glmer_binomial = glmmTMB(cbind(incidence, samples_n - incidence) ~ (1|region:city), data = aphelenchus,
+aphelenchus_glmer_binomial = glmmTMB(incidence ~ 1 + (1|region/city), data = aphelenchus,
                     family = binomial(link = "logit"))
 
 summary(aphelenchus_glmer_binomial)
 check_singularity(aphelenchus_glmer_binomial)
-
-
 ```
 
 ## By Aphelenchoides
@@ -115,16 +84,15 @@ check_singularity(aphelenchus_glmer_binomial)
 
  aphelenchoides = incidence %>% 
   filter(genus == "Aphelenchoides") |> 
-  filter(soil_corrigido %in% c("2","5","6")) |> 
+  filter(soil_corrigido %in% c("2","5","6")) %>% 
   filter(region %in% c("South","Southwest","Center","East"))
    
 
-aphelenchoides_glmer_binomial = glmmTMB(cbind(incidence, samples_n - incidence) ~ (1|region:city), data = aphelenchoides,
+aphelenchoides_glmer_binomial = glmmTMB(incidence ~ 1 + (1|region/city), data = aphelenchoides,
                     family = binomial(link = "logit"))
 
 summary(aphelenchoides_glmer_binomial)
 check_singularity(aphelenchoides_glmer_binomial)
-
 ```
 
 ## By Pratylenchus
@@ -136,20 +104,16 @@ check_singularity(aphelenchoides_glmer_binomial)
 
 pratylenchus = incidence %>% 
   filter(genus == "Pratylenchus") |> 
-  filter(soil_corrigido %in% c("2","5","6")) |> 
+  filter(soil_corrigido %in% c("2","5","6")) %>% 
   filter(region %in% c("South","Southwest","Center","East"))
   
 
 
-pratylenchus_glmer_binomial = glmmTMB(cbind(incidence, samples_n - incidence) ~ (1|region:city), data = pratylenchus,
+pratylenchus_glmer_binomial = glmmTMB(incidence ~ 1 + (1|region/city), data = pratylenchus,
                     family = binomial(link = "logit"))
 
 summary(pratylenchus_glmer_binomial)
 check_singularity(pratylenchus_glmer_binomial)
-
-
-
-
 ```
 
 ## By Helicotylenchus
@@ -162,19 +126,17 @@ check_singularity(pratylenchus_glmer_binomial)
 
 helicotylenchus = incidence %>% 
   filter(genus == "Helicotylenchus") |> 
-  filter(soil_corrigido %in% c("2","5","6")) |> 
+  filter(soil_corrigido %in% c("2","5","6")) %>% 
   filter(region %in% c("South","Southwest","Center","East"))
 
 
 
 
-helicotylenchus_glmer_binomial = glmmTMB(cbind(incidence, samples_n - incidence) ~ (1|region:city), data = helicotylenchus,
+helicotylenchus_glmer_binomial = glmmTMB(incidence ~ 1 + (1|region/city), data = helicotylenchus,
                                          family = binomial(link = "logit"))
 
 summary(helicotylenchus_glmer_binomial)
 check_singularity(helicotylenchus_glmer_binomial)
-
-
 ```
 
 ## By Rotylenchulus
@@ -186,16 +148,15 @@ check_singularity(helicotylenchus_glmer_binomial)
 
 rotylenchulus = incidence %>% 
   filter(genus == "Rotylenchulus") |> 
-  filter(soil_corrigido %in% c("2","5","6")) |> 
+  filter(soil_corrigido %in% c("2","5","6")) %>% 
   filter(region %in% c("South","Southwest","Center","East"))
   
 
-rotylenchulus_glmer_binomial = glmmTMB(cbind(incidence, samples_n - incidence) ~ (1|region:city), data = rotylenchulus,
+rotylenchulus_glmer_binomial = glmmTMB(incidence ~ 1+ (1|region/city), data = rotylenchulus,
                     family = binomial(link = "logit"))
 
 summary(rotylenchulus_glmer_binomial)
 check_singularity(rotylenchulus_glmer_binomial)
-
 
 ```
 
@@ -208,11 +169,11 @@ check_singularity(rotylenchulus_glmer_binomial)
 
 criconematidae = incidence %>% 
   filter(genus == "Criconematidae") |> 
-  filter(soil_corrigido %in% c("2","5","6")) |> 
+  filter(soil_corrigido %in% c("2","5","6")) %>% 
   filter(region %in% c("South","Southwest","Center","East"))
 
 
-criconematidae_glmer_binomial = glmer(cbind(incidence, samples_n - incidence) ~  (1|region:city), data = criconematidae,
+criconematidae_glmer_binomial = glmmTMB(incidence ~ 1+ (1|region/city), data = criconematidae,
                   family = binomial(link = "logit"))
 
 summary(criconematidae_glmer_binomial)
@@ -226,13 +187,29 @@ check_singularity(criconematidae_glmer_binomial)
 ```{r}
 # Aphelenchus
 
-aphelenchus_glmer_binomial = glmmTMB(cbind(incidence, samples_n - incidence) ~ (1|region:city), data = aphelenchus,
+aphelenchus_glmer_binomial = glmmTMB(incidence ~ 1 + (1|region/city), data = aphelenchus,
                     family = binomial(link = "logit"))
 
-aphelenchus_glmer_nulo = glmmTMB(cbind(incidence, samples_n - incidence) ~ 1, data = aphelenchus,
+aphelenchus_glmer_nulo = glmmTMB(incidence ~ 1, data = aphelenchus,
                     family = binomial(link = "logit"))
 
 anova(aphelenchus_glmer_binomial,aphelenchus_glmer_nulo)
+```
+
+```{r}
+# Aphelenchus
+
+aphelenchus_glmer_binomial_full = glmmTMB(incidence ~ 1 + (1|region/city), data = aphelenchus,
+                    family = binomial(link = "logit"))
+
+aphelenchus_glmer_binomial_region = glmmTMB(incidence ~ 1 + (1|region), data = aphelenchus,
+                    family = binomial(link = "logit"))
+
+aphelenchus_glmer_nulo = glmmTMB(incidence ~ 1, data = aphelenchus,
+                    family = binomial(link = "logit"))
+
+anova(aphelenchus_glmer_binomial_region, aphelenchus_glmer_binomial_full)
+anova(aphelenchus_glmer_nulo, aphelenchus_glmer_binomial_region)
 ```
 
 ## By Aphelenchoides
@@ -240,13 +217,29 @@ anova(aphelenchus_glmer_binomial,aphelenchus_glmer_nulo)
 ```{r}
 # Aphelenchoides
 
-aphelenchoides_glmer_binomial = glmmTMB(cbind(incidence, samples_n - incidence) ~ (1|region:city), data = aphelenchoides,
+aphelenchoides_glmer_binomial = glmmTMB(incidence ~ 1 + (1|region/city), data = aphelenchoides,
                     family = binomial(link = "logit"))
 
-aphelenchoides_glmer_nulo = glmmTMB(cbind(incidence, samples_n - incidence) ~ 1, data = aphelenchoides,
+aphelenchoides_glmer_nulo = glmmTMB(incidence ~ 1, data = aphelenchoides,
                     family = binomial(link = "logit"))
 
 anova(aphelenchoides_glmer_binomial,aphelenchoides_glmer_nulo)
+```
+
+```{r}
+# Aphelenchoides
+
+aphelenchoides_glmer_binomial_full = glmmTMB(incidence ~ 1 + (1|region/city), data = aphelenchoides,
+                    family = binomial(link = "logit"))
+
+aphelenchoides_glmer_binomial_region = glmmTMB(incidence ~ 1 + (1|region), data = aphelenchoides,
+                    family = binomial(link = "logit"))
+
+aphelenchoides_glmer_nulo = glmmTMB(incidence ~ 1, data = aphelenchoides,
+                    family = binomial(link = "logit"))
+
+anova(aphelenchoides_glmer_binomial_region, aphelenchoides_glmer_binomial_full)
+anova(aphelenchoides_glmer_nulo, aphelenchoides_glmer_binomial_region)
 ```
 
 ## By Pratylenchus
@@ -254,13 +247,29 @@ anova(aphelenchoides_glmer_binomial,aphelenchoides_glmer_nulo)
 ```{r}
 #Pratylenchus
 
-pratylenchus_glmer_binomial = glmmTMB(cbind(incidence, samples_n - incidence) ~ (1|region:city), data = pratylenchus,
+pratylenchus_glmer_binomial = glmmTMB(incidence ~ 1 + (1|region/city), data = pratylenchus,
                     family = binomial(link = "logit"))
 
-pratylenchus_glmer_nulo = glmmTMB(cbind(incidence, samples_n - incidence) ~ 1, data = pratylenchus,
+pratylenchus_glmer_nulo = glmmTMB(incidence ~ 1, data = pratylenchus,
                     family = binomial(link = "logit"))
 
 anova(pratylenchus_glmer_binomial,pratylenchus_glmer_nulo)
+```
+
+```{r}
+# Pratylenchus
+
+pratylenchus_glmer_binomial_full = glmmTMB(incidence ~ 1 + (1|region/city), data = pratylenchus,
+                    family = binomial(link = "logit"))
+
+pratylenchus_glmer_binomial_region = glmmTMB(incidence ~ 1 + (1|region), data = pratylenchus,
+                    family = binomial(link = "logit"))
+
+pratylenchus_glmer_nulo = glmmTMB(incidence ~ 1, data = pratylenchus,
+                    family = binomial(link = "logit"))
+
+anova(pratylenchus_glmer_binomial_region, pratylenchus_glmer_binomial_full)
+anova(pratylenchus_glmer_nulo, pratylenchus_glmer_binomial_region)
 ```
 
 ## By Helicotylenchus
@@ -268,28 +277,59 @@ anova(pratylenchus_glmer_binomial,pratylenchus_glmer_nulo)
 ```{r}
 #Helicotylenchus
 
-helicotylenchus_glmer_binomial = glmmTMB(cbind(incidence, samples_n - incidence) ~ (1|region:city), data = helicotylenchus,
+helicotylenchus_glmer_binomial = glmmTMB(incidence ~ 1 + (1|region/city), data = helicotylenchus,
                                          family = binomial(link = "logit"))
 
-helicotylenchus_glmer_nulo = glmmTMB(cbind(incidence, samples_n - incidence) ~ 1, data = helicotylenchus,
+helicotylenchus_glmer_nulo = glmmTMB(incidence ~ 1, data = helicotylenchus,
                                          family = binomial(link = "logit"))
 
 anova(helicotylenchus_glmer_binomial,helicotylenchus_glmer_nulo)
 ```
 
+```{r}
+# Helicotylenchus
+
+helicotylenchus_glmer_binomial_full = glmmTMB(incidence ~ 1 + (1|region/city), data = helicotylenchus,
+                    family = binomial(link = "logit"))
+
+helicotylenchus_glmer_binomial_region = glmmTMB(incidence ~ 1 + (1|region), data = helicotylenchus,
+                    family = binomial(link = "logit"))
+
+helicotylenchus_glmer_nulo = glmmTMB(incidence ~ 1, data = helicotylenchus,
+                    family = binomial(link = "logit"))
+
+anova(helicotylenchus_glmer_binomial_region, helicotylenchus_glmer_binomial_full)
+anova(helicotylenchus_glmer_nulo, helicotylenchus_glmer_binomial_region)
+```
 
 ## By Rotylenchulus
 
 ```{r}
 #Rotylenchulus
 
-rotylenchulus_glmer_binomial = glmmTMB(cbind(incidence, samples_n - incidence) ~ (1|region:city), data = rotylenchulus,
+rotylenchulus_glmer_binomial = glmmTMB(incidence ~ 1 + (1|region/city), data = rotylenchulus,
                     family = binomial(link = "logit"))
 
-rotylenchulus_glmer_nulo = glmmTMB(cbind(incidence, samples_n - incidence) ~ 1, data = rotylenchulus,
+rotylenchulus_glmer_nulo = glmmTMB(incidence ~ 1, data = rotylenchulus,
                     family = binomial(link = "logit"))
 
 anova(rotylenchulus_glmer_binomial,rotylenchulus_glmer_nulo)
+```
+
+```{r}
+# Rotylenchulus
+
+rotylenchulus_glmer_binomial_full = glmmTMB(incidence ~ 1 + (1|region/city), data = rotylenchulus,
+                    family = binomial(link = "logit"))
+
+rotylenchulus_glmer_binomial_region = glmmTMB(incidence ~ 1 + (1|region), data = rotylenchulus,
+                    family = binomial(link = "logit"))
+
+rotylenchulus_glmer_nulo = glmmTMB(incidence ~ 1, data = rotylenchulus,
+                    family = binomial(link = "logit"))
+
+anova(rotylenchulus_glmer_binomial_region, rotylenchulus_glmer_binomial_full)
+anova(rotylenchulus_glmer_nulo, rotylenchulus_glmer_binomial_region)
 ```
 
 ## By Criconematidae
@@ -298,13 +338,29 @@ anova(rotylenchulus_glmer_binomial,rotylenchulus_glmer_nulo)
 
 # Criconematidae
 
-criconematidae_glmer_binomial = glmmTMB(cbind(incidence, samples_n - incidence) ~  (1|region:city), data = criconematidae,
+criconematidae_glmer_binomial = glmmTMB(incidence ~  1 + (1|region/city), data = criconematidae,
                   family = binomial(link = "logit"))
 
-criconematidae_glmer_nulo = glmmTMB(cbind(incidence, samples_n - incidence) ~  1, data = criconematidae,
+criconematidae_glmer_nulo = glmmTMB(incidence ~  1, data = criconematidae,
                   family = binomial(link = "logit"))
 
 anova(criconematidae_glmer_binomial,criconematidae_glmer_nulo)
+```
+
+```{r}
+# Criconematidae
+
+criconematidae_glmer_binomial_full = glmmTMB(incidence ~ 1 + (1|region/city), data = criconematidae,
+                    family = binomial(link = "logit"))
+
+criconematidae_glmer_binomial_region = glmmTMB(incidence ~ 1 + (1|region), data = criconematidae,
+                    family = binomial(link = "logit"))
+
+criconematidae_glmer_nulo = glmmTMB(incidence ~ 1, data = criconematidae,
+                    family = binomial(link = "logit"))
+
+anova(criconematidae_glmer_binomial_region, criconematidae_glmer_binomial_full)
+anova(criconematidae_glmer_nulo, criconematidae_glmer_binomial_region)
 ```
 
 # Statistic - Incidence
@@ -315,8 +371,6 @@ anova(criconematidae_glmer_binomial,criconematidae_glmer_nulo)
 summary(aphelenchus_glmer_binomial)
 aphelenchus_coef = coef(summary(aphelenchus_glmer_binomial))
 plogis(aphelenchus_coef$cond)
-
-0.03748/sqrt(21) # City variance (standard error)
 ```
 
 
@@ -326,8 +380,6 @@ plogis(aphelenchus_coef$cond)
 summary(aphelenchoides_glmer_binomial)
 aphelenchoides_coef = coef(summary(aphelenchoides_glmer_binomial))
 plogis(aphelenchoides_coef$cond)
-
-0.03748/sqrt(21) # City variance (standard error)
 ```
 
 
@@ -337,8 +389,6 @@ plogis(aphelenchoides_coef$cond)
 summary(pratylenchus_glmer_binomial)
 pratylenchus_coef = coef(summary(pratylenchus_glmer_binomial))
 plogis(pratylenchus_coef$cond)
-
-1.308e-09/sqrt(21) # City variance (standard error)
 ```
 
 
@@ -348,9 +398,6 @@ plogis(pratylenchus_coef$cond)
 summary(helicotylenchus_glmer_binomial)
 helicotylenchus_coef = coef(summary(helicotylenchus_glmer_binomial))
 plogis(helicotylenchus_coef$cond)
-
-
-7.079e-10/sqrt(21) # City variance (standard error)
 ```
 
 
@@ -360,9 +407,6 @@ plogis(helicotylenchus_coef$cond)
 summary(rotylenchulus_glmer_binomial)
 rotylenchulus_coef = coef(summary(rotylenchulus_glmer_binomial))
 plogis(rotylenchulus_coef$cond)
-
-
-15.25/sqrt(21) # City variance (standard error)
 ```
 
 
@@ -374,124 +418,16 @@ summary(criconematidae_glmer_binomial)
 criconematidae_coef = coef(summary(criconematidae_glmer_binomial))
 plogis(criconematidae_coef$cond)
 
-1.122/sqrt(21) # City variance (standard error)
-
 ```
 
-# Random efect - Incidence
 
-## Estimation
-
-```{r}
-pratylenchus_groups_binomial = ranef(pratylenchus_glmer_binomial)
-pratylenchus_groups_binomial = as.data.frame(pratylenchus_groups_binomial)
-
-helicotylenchus_groups_binomial = ranef(helicotylenchus_glmer_binomial)
-helicotylenchus_groups_binomial = as.data.frame(helicotylenchus_groups_binomial)
-
-rotylenchulus_groups_binomial = ranef(rotylenchulus_glmer_binomial)
-rotylenchulus_groups_binomial = as.data.frame(rotylenchulus_groups_binomial)
-
-criconematidae_groups_binomial = ranef(criconematidae_glmer_binomial)
-criconematidae_groups_binomial = as.data.frame(criconematidae_groups_binomial)
-
-aphelenchus_groups_binomial = ranef(aphelenchus_glmer_binomial)
-aphelenchus_groups_binomial = as.data.frame(aphelenchus_groups_binomial)
-
-aphelenchoides_groups_binomial = ranef(aphelenchoides_glmer_binomial)
-aphelenchoides_groups_binomial = as.data.frame(aphelenchoides_groups_binomial)
-
-
-
-
-
-all_genus_binomial = rbind(pratylenchus_groups_binomial,helicotylenchus_groups_binomial,
-                  rotylenchulus_groups_binomial,criconematidae_groups_binomial,
-                  aphelenchus_groups_binomial,aphelenchoides_groups_binomial)
-
-nrow(aphelenchoides_groups_binomial)
-
-pratylenchus_name_binomial = replicate(21,"Pratylenchus")
-pratylenchus_name_binomial = as.data.frame(pratylenchus_name_binomial)
-colnames(pratylenchus_name_binomial)[1] = "genus"
-
-helicotylenchus_name_binomial = replicate(21,"Helicotylenchus")
-helicotylenchus_name_binomial = as.data.frame(helicotylenchus_name_binomial)
-colnames(helicotylenchus_name_binomial)[1] = "genus"
-
-rotylenchulus_name_binomial = replicate(21,"Rotylenchulus")
-rotylenchulus_name_binomial = as.data.frame(rotylenchulus_name_binomial)
-colnames(rotylenchulus_name_binomial)[1] = "genus"
-
-criconematidae_name_binomial = replicate(21,"Criconematidae")
-criconematidae_name_binomial = as.data.frame(criconematidae_name_binomial)
-colnames(criconematidae_name_binomial)[1] = "genus"
-
-aphelenchus_name_binomial = replicate(21,"Aphelenchus")
-aphelenchus_name_binomial = as.data.frame(aphelenchus_name_binomial)
-colnames(aphelenchus_name_binomial)[1] = "genus"
-
-aphelenchoides_name_binomial = replicate(21,"Aphelenchoides")
-aphelenchoides_name_binomial = as.data.frame(aphelenchoides_name_binomial)
-colnames(aphelenchoides_name_binomial)[1] = "genus"
-
-
-
-
-genus_binomial = rbind(pratylenchus_name_binomial,helicotylenchus_name_binomial,
-                    rotylenchulus_name_binomial,criconematidae_name_binomial,
-                    aphelenchus_name_binomial,aphelenchoides_name_binomial)
-
-all_genus_binomial = cbind(all_genus_binomial,genus_binomial)
-
-```
-
-## Plotting
-
-```{r}
-
-
-select_region_city_binomial = all_genus_binomial %>% 
-    filter(genus %in% c("Helicotylenchus","Pratylenchus","Aphelenchus",
-                      "Aphelenchoides","Rotylenchulus", "Criconematidae")) %>% 
-  filter(grpvar == "region:city")
-
-
-all_genus_binomial1 <- all_genus_binomial %>% #CORRIGIR O P-VALOR E OBTER PELO MÉTODO DE PSEUDO-VEROSSIMILHANÇA 
-  group_by(genus) %>%
-  summarise( 
-    n=n(),
-    mean=mean(condval),
-    sd=sd(condval)
-  ) %>%
-  mutate( se=sd/sqrt(n))  %>%
-  mutate( ic=se * qt((1-0.05)/2 + .5, n-1),
-          lower = (mean - 1.96*se),
-          upper = (mean + 1.96*se),
-          p_value = ((sd/sqrt(n)) * 1.96))
-
-
-summary(pratylenchus_glmer_binomial)
-confint(helicotylenchus_glmer_binomial)
-
-
-incidence = all_genus_binomial1 |> 
-  #filter(!genus == "Pratylenchus") |> 
-  ggplot(aes(reorder(genus,+mean), y = mean))+
-  geom_bar(stat = "identity", position = "dodge", fill = "darkgreen")+
-  theme_minimal()+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1,vjust = 1.2, size = 14),
-        text = element_text(size = 16))+
-  labs(x = "Grupos morfológicos",
-       y = "Efeito aleatório",
-       title = "Municípios/Regiões")
-
-```
 
 # Abundance
 
 ```{r}
-population = gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1YSK-g-vGZLTVZBPNpH0mo8oQZ6FkMH8xwdb-bs-ee2s/edit?usp=sharing")
+#population = gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1YSK-g-vGZLTVZBPNpH0mo8oQZ6FkMH8xwdb-bs-ee2s/edit?usp=sharing")
+
+population = read.csv("data/descriptive.csv")
 
 head(population)
 ```
@@ -521,7 +457,6 @@ population[population$soil== "Latossolo",c("soil_corrigido")] <- 6
 aphelenchus = population %>% 
   filter(quantity >0) %>% 
   filter(genus == "Aphelenchus") %>% 
-  #filter(!soil %in% c("Neossolo","Chernossolo","Gleissolo")) %>% 
   filter(soil_corrigido %in% c("2","5","6")) %>% 
   filter(region %in% c("South","Southwest","Center","East")) %>% 
     group_by(samples,region,city) %>% 
@@ -530,24 +465,8 @@ aphelenchus = population %>%
   )
 
 
-aphelenchus_glmer = glmmTMB(quantity ~ (1|region:city) +  (1|region:city:samples), data = aphelenchus,
+aphelenchus_glmer = glmmTMB(quantity ~ 1 + (1|region/city/samples), data = aphelenchus,
                     family = poisson(link = "log"))
-
-
-summary(aphelenchus_glmer)
-check_singularity(aphelenchus_glmer)
-check_overdispersion(aphelenchus_glmer)
-model_performance(aphelenchus_glmer)
-check_model(aphelenchus_glmer)
-
-#ggsave("model_check/check_aphelenchus_abundance_glmm.png", bg = "white", dpi = 600, width = 12)
-
-
-
-aphelenchus_res <- simulateResiduals(aphelenchus_glmer)
-plot(aphelenchus_res)
-
-
 
 ```
 
@@ -558,7 +477,6 @@ plot(aphelenchus_res)
 aphelenchoides = population %>% 
   filter(genus == "Aphelenchoides")%>% 
    filter(quantity >0) %>% 
-  #filter(!soil %in% c("Neossolo","Chernossolo","Gleissolo")) %>%
   filter(soil_corrigido %in% c("2","5","6"))  %>% 
   filter(region %in% c("South","Southwest","Center","East")) %>%  
    group_by(samples,region,city) %>% 
@@ -566,20 +484,9 @@ aphelenchoides = population %>%
     quantity = sum(quantity)
   )
 
-aphelenchoides_glmer = glmmTMB(quantity ~ (1|region:city) +  (1|region:city:samples), data = aphelenchoides,
+aphelenchoides_glmer = glmmTMB(quantity ~ 1 + (1|region/city/samples), data = aphelenchoides,
                     family = poisson(link = "log"))
 
-summary(aphelenchoides_glmer)
-check_singularity(aphelenchoides_glmer)
-check_overdispersion(aphelenchoides_glmer)
-model_performance(aphelenchoides_glmer)
-check_model(aphelenchoides_glmer)
-
-#ggsave("model_check/check_aphelenchoides_abundance_glmm.png", bg = "white", dpi = 600, width = 12)
-
-
-aphelenchoides_res <- simulateResiduals(aphelenchoides_glmer)
-plot(aphelenchoides_res)
 
 
 ```
@@ -592,7 +499,6 @@ plot(aphelenchoides_res)
 pratylenchus = population %>% 
   filter(quantity >0) %>% 
   filter(genus == "Pratylenchus")%>% 
- # filter(!soil %in% c("Neossolo","Chernossolo","Gleissolo"))%>%
   filter(soil_corrigido %in% c("2","5","6")) %>% 
   filter(region %in% c("South","Southwest","Center","East")) %>%  
    group_by(samples,region,city) %>% 
@@ -601,20 +507,8 @@ pratylenchus = population %>%
   )
   
 
-pratylenchus_glmer = glmmTMB(quantity ~ (1|region:city) +  (1|region:city:samples), data = pratylenchus,
+pratylenchus_glmer = glmmTMB(quantity ~ 1 + (1|region/city/samples), data = pratylenchus,
                     family = poisson(link = "log"))
-
-summary(pratylenchus_glmer)
-check_singularity(pratylenchus_glmer)
-check_overdispersion(pratylenchus_glmer)
-model_performance(pratylenchus_glmer)
-check_model(pratylenchus_glmer)
-
-#ggsave("model_check/check_pratylenchus_abundance_glmm.png", bg = "white", dpi = 600, width = 12)
-
-
-pratylenchus_res <- simulateResiduals(pratylenchus_glmer)
-plot(pratylenchus_res)
 
 
 ```
@@ -627,7 +521,6 @@ plot(pratylenchus_res)
 helicotylenchus = population %>% 
   filter(quantity >0) %>% 
   filter(genus == "Helicotylenchus") %>% 
-  #filter(!soil %in% c("Neossolo","Chernossolo","Gleissolo")) %>%
   filter(soil_corrigido %in% c("2","5","6"))%>% 
   filter(region %in% c("South","Southwest","Center","East")) %>%  
    group_by(samples,region,city) %>% 
@@ -635,26 +528,13 @@ helicotylenchus = population %>%
     quantity = sum(quantity)
   )
 
-helicotylenchus_glmer = glmmTMB(quantity ~ (1|region:city) +  (1|region:city:samples),
+helicotylenchus_glmer = glmmTMB(quantity ~ 1 + (1|region/city/samples),
                               data = helicotylenchus,family = poisson(link = "log"))
-
-
-summary(helicotylenchus_glmer)
-check_singularity(helicotylenchus_glmer)
-check_overdispersion(helicotylenchus_glmer)
-model_performance(helicotylenchus_glmer)
-check_model(helicotylenchus_glmer)
-
-#ggsave("model_check/check_helicotylenchus_abundance_glmm.png", bg = "white", dpi = 600, width = 12)
-
-
-helicotylenchus_res <- simulateResiduals(helicotylenchus_glmer)
-plot(helicotylenchus_res)
 
 
 ```
 
-## Rotylenchulus
+## By Rotylenchulus
 
 ```{r}
 #----------------------------------------------------------
@@ -662,7 +542,6 @@ plot(helicotylenchus_res)
 rotylenchulus = population %>% 
   filter(quantity >0) %>% 
   filter(genus == "Rotylenchulus") %>% 
-  #filter(!soil %in% c("Neossolo","Chernossolo","Gleissolo")) %>%
   filter(soil_corrigido %in% c("2","5","6")) %>% 
   filter(region %in% c("South","Southwest","Center","East")) %>%  
    group_by(samples,region,city) %>% 
@@ -670,20 +549,9 @@ rotylenchulus = population %>%
     quantity = sum(quantity)
   )
 
-rotylenchulus_glmer = glmmTMB(quantity ~ (1|region:city) +  (1|region:city:samples),
+rotylenchulus_glmer = glmmTMB(quantity ~ 1 + (1|region/city/samples),
                             data = rotylenchulus,family = poisson(link = "log"))
 
-summary(rotylenchulus_glmer)
-check_singularity(rotylenchulus_glmer)
-check_overdispersion(rotylenchulus_glmer)
-model_performance(rotylenchulus_glmer)
-check_model(rotylenchulus_glmer)
-
-#ggsave("model_check/check_rotylenchulus_abundance_glmm.png", bg = "white", dpi = 600, width = 12)
-
-
-rotylenchulus_res <- simulateResiduals(rotylenchulus_glmer)
-plot(rotylenchulus_res)
 
 ```
 
@@ -695,7 +563,6 @@ plot(rotylenchulus_res)
 criconematidae = population %>% 
   filter(quantity >0) %>% 
   filter(genus == "Criconematidae")%>% 
-  #filter(!soil %in% c("Neossolo","Chernossolo","Gleissolo")) %>%
   filter(soil_corrigido %in% c("2","5","6"))%>% 
   filter(region %in% c("South","Southwest","Center","East")) %>%  
    group_by(samples,region,city) %>% 
@@ -703,20 +570,9 @@ criconematidae = population %>%
     quantity = sum(quantity)
   )
 
-criconematidae_glmer = glmmTMB(quantity ~ (1|region:city) +  (1|region:city:samples),
+criconematidae_glmer = glmmTMB(quantity ~ 1 + (1|region/city/samples),
                              data = criconematidae,family = poisson(link = "log"))
 
-summary(criconematidae_glmer)
-check_singularity(criconematidae_glmer)
-check_overdispersion(criconematidae_glmer)
-model_performance(criconematidae_glmer)
-check_model(criconematidae_glmer)
-
-#ggsave("model_check/check_rotylenchulus_abundance_glmm.png", bg = "white", dpi = 600, width = 12)
-
-
-criconematidae_res <- simulateResiduals(criconematidae_glmer)
-plot(criconematidae_res)
 ```
 
 # Significance of the random effects (Likelihood ratio tests)
@@ -726,18 +582,40 @@ plot(criconematidae_res)
 ```{r}
 #Aphelenchus
 
-aphelenchus_glmer_full = glmmTMB(quantity ~ (1|region:city) +  (1|region:city:samples), data = aphelenchus,
+aphelenchus_glmer_full = glmmTMB(quantity ~ 1 + (1|region/city/samples), data = aphelenchus,
                     family = poisson(link = "log"))
 
-aphelenchus_glmer_city = glmmTMB(quantity ~ (1|region:city) , data = aphelenchus,
+aphelenchus_glmer_city = glmmTMB(quantity ~ 1, data = aphelenchus,
                     family = poisson(link = "log"))
 
-aphelenchus_samples = glmmTMB(quantity ~ (1|region:city:samples) , data = aphelenchus,
+anova(aphelenchus_glmer_full,aphelenchus_glmer_city)
+```
+
+```{r}
+# Modelo com region, city e samples como efeitos aleatórios aninhados
+aphelenchus_mod_full <- glmmTMB(quantity ~ 1 + (1|region/city/samples), 
+                    data = aphelenchus, 
                     family = poisson(link = "log"))
 
-anova(aphelenchus_glmer_full,aphelenchus_glmer_city, test = "LRT")
 
-anova(aphelenchus_glmer_full, aphelenchus_samples, test = "LRT")
+aphelenchus_mod_no_samples <- glmmTMB(quantity ~ 1 + (1|region/city), 
+                       data = aphelenchus, 
+                       family = poisson(link = "log"))
+
+aphelenchus_mod_only_region <- glmmTMB(quantity ~ 1 + (1|region), 
+                            data = aphelenchus, 
+                            family = poisson(link = "log"))
+
+aphelenchus_mod_null <- glmmTMB(quantity ~ 1, 
+                    data = aphelenchus, 
+                    family = poisson(link = "log"))
+
+anova(aphelenchus_mod_full, aphelenchus_mod_no_samples)
+
+anova(aphelenchus_mod_no_samples, aphelenchus_mod_only_region)
+
+anova(aphelenchus_mod_only_region, aphelenchus_mod_null)
+
 ```
 
 ## By Aphelenchoides
@@ -745,18 +623,41 @@ anova(aphelenchus_glmer_full, aphelenchus_samples, test = "LRT")
 ```{r}
 #Aphelenchoides
 
-aphelenchoides_glmer_full = glmmTMB(quantity ~ (1|region:city) +  (1|region:city:samples), data = aphelenchoides,
+aphelenchoides_glmer_full = glmmTMB(quantity ~ 1 + (1|region/city/samples), data = aphelenchoides,
                     family = poisson(link = "log"))
 
-aphelenchoides_glmer_city = glmmTMB(quantity ~ (1|region:city) , data = aphelenchoides,
+aphelenchoides_glmer_city = glmmTMB(quantity ~ 1 , data = aphelenchoides,
                     family = poisson(link = "log"))
 
-aphelenchoides_samples = glmmTMB(quantity ~ (1|region:city:samples) , data = aphelenchoides,
+anova(aphelenchoides_glmer_full,aphelenchoides_glmer_city)
+```
+
+
+```{r}
+# Modelo com region, city e samples como efeitos aleatórios aninhados
+aphelenchoides_mod_full <- glmmTMB(quantity ~ 1 + (1|region/city/samples), 
+                    data = aphelenchoides, 
                     family = poisson(link = "log"))
 
-anova(aphelenchoides_glmer_full,aphelenchoides_glmer_city, test = "LRT")
 
-anova(aphelenchoides_glmer_full, aphelenchoides_samples, test = "LRT")
+aphelenchoides_mod_no_samples <- glmmTMB(quantity ~ 1 + (1|region/city), 
+                       data = aphelenchoides, 
+                       family = poisson(link = "log"))
+
+aphelenchoides_mod_only_region <- glmmTMB(quantity ~ 1 + (1|region), 
+                            data = aphelenchoides, 
+                            family = poisson(link = "log"))
+
+aphelenchoides_mod_null <- glmmTMB(quantity ~ 1, 
+                    data = aphelenchoides, 
+                    family = poisson(link = "log"))
+
+anova(aphelenchoides_mod_full, aphelenchoides_mod_no_samples)
+
+anova(aphelenchoides_mod_no_samples, aphelenchoides_mod_only_region)
+
+anova(aphelenchoides_mod_only_region, aphelenchoides_mod_null)
+
 ```
 
 ## By Pratylenchus
@@ -764,18 +665,40 @@ anova(aphelenchoides_glmer_full, aphelenchoides_samples, test = "LRT")
 ```{r}
 #Pratylenchus
 
-pratylenchus_glmer_full = glmmTMB(quantity ~ (1|region:city) +  (1|region:city:samples), data = pratylenchus,
+pratylenchus_glmer_full = glmmTMB(quantity ~ 1 + (1|region/city/samples), data = pratylenchus,
                     family = poisson(link = "log"))
 
-pratylenchus_glmer_city = glmmTMB(quantity ~ (1|region:city) , data = pratylenchus,
+pratylenchus_glmer_city = glmmTMB(quantity ~ 1, data = pratylenchus,
                     family = poisson(link = "log"))
 
-pratylenchus_samples = glmmTMB(quantity ~ (1|region:city:samples) , data = pratylenchus,
+anova(pratylenchus_glmer_full,pratylenchus_glmer_city)
+```
+
+```{r}
+# Modelo com region, city e samples como efeitos aleatórios aninhados
+pratylenchus_mod_full <- glmmTMB(quantity ~ 1 + (1|region/city/samples), 
+                    data = pratylenchus, 
                     family = poisson(link = "log"))
 
-anova(pratylenchus_glmer_full,pratylenchus_glmer_city, test = "LRT")
 
-anova(pratylenchus_glmer_full, pratylenchus_samples, test = "LRT")
+pratylenchus_mod_no_samples <- glmmTMB(quantity ~ 1 + (1|region/city), 
+                       data = pratylenchus, 
+                       family = poisson(link = "log"))
+
+pratylenchus_mod_only_region <- glmmTMB(quantity ~ 1 + (1|region), 
+                            data = pratylenchus, 
+                            family = poisson(link = "log"))
+
+pratylenchus_mod_null <- glmmTMB(quantity ~ 1, 
+                    data = pratylenchus, 
+                    family = poisson(link = "log"))
+
+anova(pratylenchus_mod_full, pratylenchus_mod_no_samples)
+
+anova(pratylenchus_mod_no_samples, pratylenchus_mod_only_region)
+
+anova(pratylenchus_mod_only_region, pratylenchus_mod_null)
+
 ```
 
 
@@ -784,38 +707,82 @@ anova(pratylenchus_glmer_full, pratylenchus_samples, test = "LRT")
 ```{r}
 #Helicotylenchus
 
-helicotylenchus_glmer_full = glmmTMB(quantity ~ (1|region:city) +  (1|region:city:samples), data = helicotylenchus,
+helicotylenchus_glmer_full = glmmTMB(quantity ~ 1 + (1|region/city/samples), data = helicotylenchus,
                     family = poisson(link = "log"))
 
-helicotylenchus_glmer_city = glmmTMB(quantity ~ (1|region:city) , data = helicotylenchus,
+helicotylenchus_glmer_city = glmmTMB(quantity ~ 1, data = helicotylenchus,
                     family = poisson(link = "log"))
 
-helicotylenchus_samples = glmmTMB(quantity ~ (1|region:city:samples) , data = helicotylenchus,
-                    family = poisson(link = "log"))
-
-anova(helicotylenchus_glmer_full,helicotylenchus_glmer_city, test = "LRT")
-
-anova(helicotylenchus_glmer_full, helicotylenchus_samples, test = "LRT")
+anova(helicotylenchus_glmer_full,helicotylenchus_glmer_city)
 ```
 
+```{r}
+# Modelo com region, city e samples como efeitos aleatórios aninhados
+helicotylenchus_mod_full <- glmmTMB(quantity ~ 1 + (1|region/city/samples), 
+                    data = helicotylenchus, 
+                    family = poisson(link = "log"))
+
+
+helicotylenchus_mod_no_samples <- glmmTMB(quantity ~ 1 + (1|region/city), 
+                       data = helicotylenchus, 
+                       family = poisson(link = "log"))
+
+helicotylenchus_mod_only_region <- glmmTMB(quantity ~ 1 + (1|region), 
+                            data = helicotylenchus, 
+                            family = poisson(link = "log"))
+
+helicotylenchus_mod_null <- glmmTMB(quantity ~ 1, 
+                    data = helicotylenchus, 
+                    family = poisson(link = "log"))
+
+anova(helicotylenchus_mod_full, helicotylenchus_mod_no_samples)
+
+anova(helicotylenchus_mod_no_samples, helicotylenchus_mod_only_region)
+
+anova(helicotylenchus_mod_only_region, helicotylenchus_mod_null)
+
+```
 
 ## By Rotylenchulus
 
 ```{r}
 #Rotylenchulus
 
-rotylenchulus_glmer_full = glmmTMB(quantity ~ (1|region:city) +  (1|region:city:samples), data = rotylenchulus,
+rotylenchulus_glmer_full = glmmTMB(quantity ~ 1 + (1|region/city/samples), data = rotylenchulus,
                     family = poisson(link = "log"))
 
-rotylenchulus_glmer_city = glmmTMB(quantity ~ (1|region:city) , data = rotylenchulus,
+rotylenchulus_samples = glmmTMB(quantity ~ 1 , data = rotylenchulus,
                     family = poisson(link = "log"))
 
-rotylenchulus_samples = glmmTMB(quantity ~ (1|region:city:samples) , data = rotylenchulus,
+anova(rotylenchulus_glmer_full,rotylenchulus_samples)
+```
+
+
+```{r}
+# Modelo com region, city e samples como efeitos aleatórios aninhados
+rotylenchulus_mod_full <- glmmTMB(quantity ~ 1 + (1|region/city/samples), 
+                    data = rotylenchulus, 
                     family = poisson(link = "log"))
 
-anova(rotylenchulus_glmer_full,rotylenchulus_glmer_city, test = "LRT")
 
-anova(rotylenchulus_glmer_full, rotylenchulus_samples, test = "LRT")
+rotylenchulus_mod_no_samples <- glmmTMB(quantity ~ 1 + (1|region/city), 
+                       data = rotylenchulus, 
+                       family = poisson(link = "log"))
+
+rotylenchulus_mod_only_region <- glmmTMB(quantity ~ 1 + (1|region), 
+                            data = rotylenchulus, 
+                            family = poisson(link = "log"))
+
+rotylenchulus_mod_null <- glmmTMB(quantity ~ 1, 
+                    data = rotylenchulus, 
+                    family = poisson(link = "log"))
+
+anova(rotylenchulus_mod_full, rotylenchulus_mod_no_samples)
+
+anova(rotylenchulus_mod_no_samples, rotylenchulus_mod_only_region)
+
+anova(rotylenchulus_mod_only_region, rotylenchulus_mod_null)
+
 ```
 
 
@@ -825,20 +792,40 @@ anova(rotylenchulus_glmer_full, rotylenchulus_samples, test = "LRT")
 
 #Criconematidae
 
-criconematidae_glmer_full = glmmTMB(quantity ~ (1|region:city) +  (1|region:city:samples), data = criconematidae,
+criconematidae_glmer_full = glmmTMB(quantity ~ 1 + (1|region/city/samples), data = criconematidae,
                     family = poisson(link = "log"))
 
-criconematidae_glmer_city = glmmTMB(quantity ~ (1|region:city) , data = criconematidae,
+criconematidae_glmer_city = glmmTMB(quantity ~ 1, data = criconematidae,
                     family = poisson(link = "log"))
 
-criconematidae_samples = glmmTMB(quantity ~ (1|region:city:samples) , data = criconematidae,
+anova(criconematidae_glmer_full,criconematidae_glmer_city)
+
+```
+
+```{r}
+# Modelo com region, city e samples como efeitos aleatórios aninhados
+criconematidae_mod_full <- glmmTMB(quantity ~ 1 + (1|region/city/samples), 
+                    data = criconematidae, 
                     family = poisson(link = "log"))
 
-anova(criconematidae_glmer_full,criconematidae_glmer_city, test = "LRT")
 
-anova(criconematidae_glmer_full, criconematidae_samples, test = "LRT")
+criconematidae_mod_no_samples <- glmmTMB(quantity ~ 1 + (1|region/city), 
+                       data = criconematidae, 
+                       family = poisson(link = "log"))
 
+criconematidae_mod_only_region <- glmmTMB(quantity ~ 1 + (1|region), 
+                            data = criconematidae, 
+                            family = poisson(link = "log"))
 
+criconematidae_mod_null <- glmmTMB(quantity ~ 1, 
+                    data = criconematidae, 
+                    family = poisson(link = "log"))
+
+anova(criconematidae_mod_full, criconematidae_mod_no_samples)
+
+anova(criconematidae_mod_no_samples, criconematidae_mod_only_region)
+
+anova(criconematidae_mod_only_region, criconematidae_mod_null)
 
 ```
 
@@ -847,46 +834,27 @@ anova(criconematidae_glmer_full, criconematidae_samples, test = "LRT")
 ## By Aphelenchus
 
 ```{r}
+
 summary(aphelenchus_glmer)
 
-0.1198/sqrt(21) # City variance (standard error)
-
-((0.3461/sqrt(21)) * 1.96)#P-value
-
-0.6596/sqrt(238) #Field variance (standard error)
-
-((0.8122/sqrt(238)) * 1.96)#P-value
 ```
 
 
 ## By Aphelenchoides
 
 ```{r}
+
 summary(aphelenchoides_glmer)
 
-0.2836/sqrt(21) # City variance (standard error)
-
-((0.5325/sqrt(21)) * 1.96)#P-value
-
-
-0.3967/sqrt(188) #Field variance (standard error)
-
-((0.6299/sqrt(188)) * 1.96)#P-value
 ```
 
 
 ## By Pratylenchus
 
 ```{r}
+
 summary(pratylenchus_glmer)
 
-0.1165/sqrt(20) # City variance (standard error)
-
-((0.3414/sqrt(20)) * 1.96)#P-value
-
-0.9126/sqrt(197) #Field variance (standard error)
-
-((0.9553 /sqrt(197)) * 1.96)#P-value
 ```
 
 
@@ -895,14 +863,6 @@ summary(pratylenchus_glmer)
 ```{r}
 summary(helicotylenchus_glmer)
 
-0.3894/sqrt(22) # City variance (standard error)
-
-((0.624 /sqrt(22)) * 1.96)#P-value
-
-
-1.0797/sqrt(264) #Field variance (standard error)
-
-((1.039/sqrt(264)) * 1.96)#P-value
 ```
 
 
@@ -911,14 +871,6 @@ summary(helicotylenchus_glmer)
 ```{r}
 summary(rotylenchulus_glmer)
 
-6.230e-09/sqrt(4) # City variance (standard error)
-
-((7.893e-05/sqrt(4)) * 1.96)#P-value
-
-
-3.383/sqrt(18) #Field variance (standard error)
-
-((1.839/sqrt(18)) * 1.96)#P-value
 ```
 
 
@@ -927,125 +879,5 @@ summary(rotylenchulus_glmer)
 ```{r}
 
 summary(criconematidae_glmer)
-
-0.3931/sqrt(17) # City variance (standard error)
-
-((0.627/sqrt(17)) * 1.96)#P-value
-
-1.1031/sqrt(59) #Field variance (standard error)
-
-((1.050/sqrt(59)) * 1.96)#P-value
-
-
-```
-
-```{r, eval = FALSE, warning=FALSE}
-predictmeans::predictmeans(aphelenchoides_glmer,modelterm = "(1|region:city:samples:city)", atvar="city")
-```
-
-# Random efect - Incidence
-
-## Estimation
-
-```{r}
-pratylenchus_groups = ranef(pratylenchus_glmer)
-pratylenchus_groups = as.data.frame(pratylenchus_groups)
-
-helicotylenchus_groups = ranef(helicotylenchus_glmer)
-helicotylenchus_groups = as.data.frame(helicotylenchus_groups)
-
-rotylenchulus_groups = ranef(rotylenchulus_glmer)
-rotylenchulus_groups = as.data.frame(rotylenchulus_groups)
-
-criconematidae_groups = ranef(criconematidae_glmer)
-criconematidae_groups = as.data.frame(criconematidae_groups)
-
-aphelenchus_groups = ranef(aphelenchus_glmer)
-aphelenchus_groups = as.data.frame(aphelenchus_groups)
-
-aphelenchoides_groups = ranef(aphelenchoides_glmer)
-aphelenchoides_groups = as.data.frame(aphelenchoides_groups)
-
-
-
-
-
-all_genus = rbind(pratylenchus_groups,helicotylenchus_groups,rotylenchulus_groups,
-                  criconematidae_groups,aphelenchus_groups,aphelenchoides_groups)
-
-nrow(aphelenchoides_groups)
-
-pratylenchus_name = replicate(217,"Pratylenchus")
-pratylenchus_name = as.data.frame(pratylenchus_name)
-colnames(pratylenchus_name)[1] = "genus"
-
-helicotylenchus_name = replicate(286,"Helicotylenchus")
-helicotylenchus_name = as.data.frame(helicotylenchus_name)
-colnames(helicotylenchus_name)[1] = "genus"
-
-rotylenchulus_name = replicate(22,"Rotylenchulus")
-rotylenchulus_name = as.data.frame(rotylenchulus_name)
-colnames(rotylenchulus_name)[1] = "genus"
-
-criconematidae_name = replicate(76,"Criconematidae")
-criconematidae_name = as.data.frame(criconematidae_name)
-colnames(criconematidae_name)[1] = "genus"
-
-aphelenchus_name = replicate(259,"Aphelenchus")
-aphelenchus_name = as.data.frame(aphelenchus_name)
-colnames(aphelenchus_name)[1] = "genus"
-
-aphelenchoides_name = replicate(209,"Aphelenchoides")
-aphelenchoides_name = as.data.frame(aphelenchoides_name)
-colnames(aphelenchoides_name)[1] = "genus"
-
-
-
-
-genus = rbind(pratylenchus_name,helicotylenchus_name,rotylenchulus_name,
-              criconematidae_name,aphelenchus_name,aphelenchoides_name)
-
-all_genus = cbind(all_genus,genus)
-
-select_region_city_samples = all_genus %>% 
-    filter(genus %in% c("Helicotylenchus","Pratylenchus","Aphelenchus",
-                      "Aphelenchoides","Rotylenchulus", "Criconematidae")) %>% 
-  filter(grpvar == "region:city:samples")
-
-select_region_city = all_genus %>% 
-    filter(genus %in% c("Helicotylenchus","Pratylenchus","Aphelenchus",
-                      "Aphelenchoides","Rotylenchulus", "Criconematidae")) %>% 
-  filter(grpvar == "region:city")
-
-
-
-colnames(select_region_city_samples) = c("group","term","grp","mean","sd","genus")
-colnames(select_region_city) = c("group","term","grp","mean","sd","genus")
-
-all_genus1 <- all_genus %>%
-  group_by(grpvar,genus) %>%
-  summarise( 
-    n=n(),
-    mean=mean(condval),
-    sd=sd(condval)
-  ) %>%
-  mutate( se=sd/sqrt(n))  %>%
-  mutate( ic=se * qt((1-0.05)/2 + .5, n-1),
-    lower = (mean - 1.96*se),
-    upper = (mean + 1.96*se),
-          p_value = ((sd/sqrt(n)) * 1.96))
-
-```
-
-## Plotting
-```{r}
-all_genus1 %>% 
-    filter(genus %in% c("Helicotylenchus","Pratylenchus","Aphelenchus",
-                      "Aphelenchoides","Rotylenchulus", "Criconematidae")) %>% 
- # filter(grpvar == "soil:city:altitute") %>% 
-  ggplot(aes(genus,mean))+
-  geom_bar(stat = "identity", position = "dodge")+
-  facet_wrap(~grpvar)+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
