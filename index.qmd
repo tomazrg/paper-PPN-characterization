@@ -1,6 +1,9 @@
 # About
 
-<img src="fig/map_final.png" style="width: 600px; height: 500px;float: top; margin-left: 10px;"> 
+<div style="text-align: center;">
+  <img src="fig/map_final.png" style="width: 600px; height: 500px;">
+</div>
+ 
 
 <div style="text-align: justify;">
 The purpose of this study was to perform the first search of identification in scale-large of plant-parasitic nematodes, estimate the spatial heterogeneity and predict the probability of occurrence and reach the damage threshold of the morphological group specifics in tropical region from the influence of different environmental and cultural variables.
