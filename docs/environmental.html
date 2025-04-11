@@ -261,11 +261,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="incidence---logistic-regression" class="level1">
 <h1>Incidence - Logistic regression</h1>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">#incidence = gsheet2tbl("https://docs.google.com/spreadsheets/d/1gr-TUpB-mNAhZVOBEcmHRwE1etorOeJvlhjcu7wEpz4/edit?usp=sharing")</span></span>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>incidence <span class="ot">=</span> <span class="fu">read.csv</span>(<span class="st">"data/spatial_incidence.csv"</span>)</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>incidence <span class="ot">=</span> <span class="fu">read.csv</span>(<span class="st">"data/spatial_incidence.csv"</span>)</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(incidence)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(incidence)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div data-pagedtable="false">
   <script data-pagedtable-source="" type="application/json">
@@ -1919,15 +1917,14 @@ X2 = 2.3, df = 1, P(&gt; X2) = 0.13</code></pre>
 <h1>Abundance - Ordinal regression</h1>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb145"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb145-1"><a href="#cb145-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Modificado</span></span>
-<span id="cb145-2"><a href="#cb145-2" aria-hidden="true" tabindex="-1"></a><span class="co">#population = gsheet2tbl("https://docs.google.com/spreadsheets/d/1vtTIBgpJ1qqdPp3MjIPUEYASMj_lUSZR/edit?usp=sharing&amp;ouid=112586075609758894128&amp;rtpof=true&amp;sd=true")</span></span>
-<span id="cb145-3"><a href="#cb145-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb145-4"><a href="#cb145-4" aria-hidden="true" tabindex="-1"></a>population <span class="ot">=</span> <span class="fu">read.csv</span>(<span class="st">"data/ordinal.csv"</span>)</span>
-<span id="cb145-5"><a href="#cb145-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb145-6"><a href="#cb145-6" aria-hidden="true" tabindex="-1"></a> population<span class="sc">$</span>quantity <span class="ot">=</span> <span class="fl">6.66</span><span class="sc">*</span>population<span class="sc">$</span>quantity </span>
-<span id="cb145-7"><a href="#cb145-7" aria-hidden="true" tabindex="-1"></a> population<span class="sc">$</span>quantity <span class="ot">=</span><span class="fu">as.integer</span>(population<span class="sc">$</span>quantity)</span>
-<span id="cb145-8"><a href="#cb145-8" aria-hidden="true" tabindex="-1"></a> population<span class="sc">$</span>quantity <span class="ot">=</span><span class="fu">as.numeric</span>(population<span class="sc">$</span>quantity)</span>
-<span id="cb145-9"><a href="#cb145-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb145-10"><a href="#cb145-10" aria-hidden="true" tabindex="-1"></a><span class="co">#population[,10] = NULL</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb145-2"><a href="#cb145-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb145-3"><a href="#cb145-3" aria-hidden="true" tabindex="-1"></a>population <span class="ot">=</span> <span class="fu">read.csv</span>(<span class="st">"data/ordinal.csv"</span>)</span>
+<span id="cb145-4"><a href="#cb145-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb145-5"><a href="#cb145-5" aria-hidden="true" tabindex="-1"></a> population<span class="sc">$</span>quantity <span class="ot">=</span> <span class="fl">6.66</span><span class="sc">*</span>population<span class="sc">$</span>quantity </span>
+<span id="cb145-6"><a href="#cb145-6" aria-hidden="true" tabindex="-1"></a> population<span class="sc">$</span>quantity <span class="ot">=</span><span class="fu">as.integer</span>(population<span class="sc">$</span>quantity)</span>
+<span id="cb145-7"><a href="#cb145-7" aria-hidden="true" tabindex="-1"></a> population<span class="sc">$</span>quantity <span class="ot">=</span><span class="fu">as.numeric</span>(population<span class="sc">$</span>quantity)</span>
+<span id="cb145-8"><a href="#cb145-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb145-9"><a href="#cb145-9" aria-hidden="true" tabindex="-1"></a><span class="co">#population[,10] = NULL</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <section id="by-helicotylenchus" class="level2">
 <h2 class="anchored" data-anchor-id="by-helicotylenchus">By Helicotylenchus</h2>

@@ -33,7 +33,6 @@ library(lmtest)
 # Incidence
 
 ```{r}
-#incidence = gsheet2tbl("https://docs.google.com/spreadsheets/d/1gr-TUpB-mNAhZVOBEcmHRwE1etorOeJvlhjcu7wEpz4/edit?usp=sharing")
 
 incidence = read.csv("data/spatial_incidence.csv")
 
@@ -425,7 +424,6 @@ plogis(criconematidae_coef$cond)
 # Abundance
 
 ```{r}
-#population = gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1YSK-g-vGZLTVZBPNpH0mo8oQZ6FkMH8xwdb-bs-ee2s/edit?usp=sharing")
 
 population = read.csv("data/descriptive.csv")
 

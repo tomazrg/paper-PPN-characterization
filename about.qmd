@@ -33,7 +33,6 @@ library(lmtest)
 #Data importation
 
 ```{r}
-#population = gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1YSK-g-vGZLTVZBPNpH0mo8oQZ6FkMH8xwdb-bs-ee2s/edit?usp=sharing")
 
 population = read.csv("data/descriptive.csv")
 

@@ -33,7 +33,6 @@ library(lmtest)
 # Incidence - Logistic regression
 
 ```{r}
-#incidence = gsheet2tbl("https://docs.google.com/spreadsheets/d/1gr-TUpB-mNAhZVOBEcmHRwE1etorOeJvlhjcu7wEpz4/edit?usp=sharing")
 
 incidence = read.csv("data/spatial_incidence.csv")
 
@@ -1058,7 +1057,6 @@ ggsave("fig/odd_ratio_soil_mixed.png",dpi = 600, bg = "white", width = 10, heigh
 
 ```{r}
 #Modificado
-#population = gsheet2tbl("https://docs.google.com/spreadsheets/d/1vtTIBgpJ1qqdPp3MjIPUEYASMj_lUSZR/edit?usp=sharing&ouid=112586075609758894128&rtpof=true&sd=true")
 
 population = read.csv("data/ordinal.csv")
 
