@@ -6,5 +6,5 @@
  
 
 <div style="text-align: justify;">
-The purpose of this study was to perform the first search of identification in scale-large of plant-parasitic nematodes, estimate the spatial heterogeneity and predict the probability of occurrence and reach the damage threshold of the morphological group specifics in tropical region from the influence of different environmental and cultural variables.
+The aim of this study was to perform the first large-scale identification of plant-parasitic nematodes in Brazilian corn fields, estimate spatial heterogeneity and predict the probability of occurrence and reach of the damage threshold of specific morphological groups in tropical regions from the influence of different environmental and cultural variables.
 </div>
