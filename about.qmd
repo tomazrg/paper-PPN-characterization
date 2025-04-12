@@ -480,7 +480,7 @@ region_density2
  theme(text = element_text(size = 20))+
     facet_wrap(~region)+
     coord_flip()
- 
+
  #ggsave("mean_density_region_supplementary.png", bg = "white", dpi = 600, width = 14, height = 10)
 ```
 

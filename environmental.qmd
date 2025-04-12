@@ -1993,7 +1993,7 @@ point = altitude1 %>%
     group_by(genus,altitude_range) %>% 
   summarise(
     
-    probi = mean(mean),
+    prob = mean(mean),
     up_95 = mean(up_95),
     low_95 = mean(low_95),
    
@@ -2012,7 +2012,9 @@ point %>%
     ggplot(aes(altitude_range,prob))+
   geom_jitter(data = altitude_genus, alpha = .2, size = 5, width = .03, color = "gray")+
   #geom_violin(data = altitude_genus, alpha = .7, width = .03, fill = "grey", color = "grey")+
-  geom_pointrange(aes(ymin = prob- low_95, ymax = prob + up_95), color = "#041e39", size = 1)+
+ # geom_pointrange(aes(ymin = prob- low_95, ymax = prob + up_95), color = "#041e39", size = 1)+
+  geom_pointrange(aes(ymin = low_95, ymax = up_95), color = "#041e39", size = 1)+
+    #scale_y_continuous(breaks = c(0.00, 0.25, 0.50,0.75,1.00), limits = c(0.00, 1.00))+
   ggthemes::theme_few()+
   facet_wrap(~genus)+
   labs(x= "Altitude (m)",
@@ -2021,6 +2023,8 @@ point %>%
         axis.text.x = element_text(angle = 45, hjust = 1),
         axis.title = element_text(face = "bold"),
         strip.text = element_text(face = "italic",size = 14))
+
+
 
 ggsave("fig/prob_altitude.png", bg = "white", width = 12, height = 8)
 ```
