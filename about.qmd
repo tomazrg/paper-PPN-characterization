@@ -76,6 +76,9 @@ population_incidence_city = population %>%
   )
 
 count(population_incidence_city)
+
+population_incidence_city %>% 
+  filter(genus == "Aphelenchus")
 ```
 
 ## By region
@@ -197,6 +200,8 @@ population_incidence_soil= population %>%
 
 count(population_incidence_soil)
 
+population_incidence_soil %>% 
+  filter(soil == "Cambissolo")
 ```
 
 ```{r}
@@ -419,66 +424,30 @@ soil_frequency %>%
 
  #region
 
-region = population %>% 
-  #filter(Sampling == "Root") %>% 
-  filter(quantity > 0) %>% 
-  group_by(genus,region) %>% 
+region_density <- population %>%
+  filter(quantity > 0) %>%
+  group_by(genus, region) %>%
   summarise(
-      quantity = sum(quantity)) 
+    n = n(),
+    total_quantity = sum(quantity),
+    sd = sd(quantity),
+    mean_density = total_quantity / n,
+    se = sd / sqrt(n),
+    .groups = "drop"
+  )
 
- population %>% 
-  #filter(Sampling == "Root") %>% 
-  filter(quantity > 0) %>% 
-  group_by(genus,region) %>% 
-  summarise( 
-        quantity = sum(quantity)) %>% 
-   group_by(genus) %>% 
-   summarise(
-     n = n()
-   )
- 
- region[region$genus== "Helicotylenchus",c("presence_region")] <- 6
- region[region$genus== "Pratylenchus",c("presence_region")] <- 6
- region[region$genus== "Meloidogyne",c("presence_region")] <- 5
- region[region$genus== "Aphelenchus",c("presence_region")] <- 6
- region[region$genus== "Aphelenchoides",c("presence_region")] <- 5 
- region[region$genus== "Criconematidae",c("presence_region")] <- 6
- region[region$genus== "Rotylenchus",c("presence_region")] <- 5
- region[region$genus== "Rotylenchulus",c("presence_region")] <- 4 
- region[region$genus== "Tylenchidae",c("presence_region")] <- 6
- region[region$genus== "Anguinidae",c("presence_region")] <- 6
- region[region$genus== "Tylenchorhynchus",c("presence_region")] <- 5
- region[region$genus== "Trichodorus",c("presence_region")] <- 4
- region[region$genus== "Heterodera",c("presence_region")] <- 3
- region[region$genus== "Paratrichodorus",c("presence_region")] <- 3
- region[region$genus=="Hemicycliophora",c("presence_region")] <- 4
- region[region$genus== "Xiphinema",c("presence_region")] <- 1
- region[region$genus== "Paratylenchus",c("presence_region")] <- 1
- region[region$genus== "Merlinius",c("presence_region")] <- 1
- region[region$genus=="Scutellonema",c("presence_region")] <- 4
- region[region$genus== "Longidorus",c("presence_region")] <- 2
- region[region$genus== "Hoplolaimus",c("presence_region")] <- 2
- 
- 
-  region_mean = region %>% 
-   filter(quantity > 0) %>% 
-  group_by(genus,region) %>% 
-  summarise(
-   mean_density = quantity/presence_region)
-  
+region_density
 
-region_mean
- 
 ```
 
 ```{r}
-  region_density = region_mean %>% 
+  region_density2 = region_density %>% 
     #filter(!region %in% c("North","Northwest")) %>% 
    filter(genus %in% c("Aphelenchus","Aphelenchoides","Criconematidae","Rotylenchulus",
                        "Pratylenchus","Helicotylenchus")) %>% 
    ggplot(aes(reorder(genus,+mean_density), mean_density))+
   geom_bar(stat = "identity", position = "dodge", fill = "black")+
-  scale_y_continuous(breaks = seq(0, 3000, by = 500)) +
+  #scale_y_continuous(breaks = seq(0, 3000, by = 500)) +
   ggthemes::theme_few()+
    labs( x = "Morphological group",
          y = "Mean density (nematodes/100 cm³)")+
@@ -488,7 +457,7 @@ region_mean
 
  ggsave("fig/mean_density_region.png", bg = "white", dpi = 600, width = 14, height = 10)
 
-region_density
+region_density2
 
 
 ```
@@ -499,9 +468,9 @@ region_density
 
 # Supplementary 
 
-  region_mean %>% 
+  region_density %>% 
     #filter(!region %in% c("North","Northwest")) %>% 
-   filter(!genus %in% c("Aphelenchus","Aphelenchoides","Criconematidae","Rotylenchulus",
+   dplyr::filter(!genus %in% c("Aphelenchus","Aphelenchoides","Criconematidae","Rotylenchulus",
                        "Pratylenchus","Helicotylenchus")) %>% 
    ggplot(aes(reorder(genus,+mean_density), mean_density))+
   geom_bar(stat = "identity", position = "dodge", fill = "steelblue")+
@@ -513,8 +482,6 @@ region_density
     coord_flip()
  
  #ggsave("mean_density_region_supplementary.png", bg = "white", dpi = 600, width = 14, height = 10)
-
-region_mean
 ```
 
 ## By municipality
@@ -522,46 +489,23 @@ region_mean
 ```{r}
  #city
  
- city = population %>% 
-  #filter(Sampling == "Root") %>% 
-  filter(quantity > 0) %>% 
-  group_by(genus,city) %>% 
+municipality_density <- population %>%
+  filter(quantity > 0) %>%
+  group_by(genus, city) %>%
   summarise(
-      quantity = sum(quantity)
-  ) 
- 
- city[city$genus== "Helicotylenchus",c("presence_city")] <- 26
- city[city$genus== "Pratylenchus",c("presence_city")] <- 25
- city[city$genus== "Meloidogyne",c("presence_city")] <- 16
- city[city$genus== "Aphelenchus",c("presence_city")] <- 26
- city[city$genus== "Aphelenchoides",c("presence_city")] <- 25
- city[city$genus== "Criconematidae",c("presence_city")] <- 21
- city[city$genus== "Rotylenchus",c("presence_city")] <- 19
- city[city$genus== "Rotylenchulus",c("presence_city")] <- 6
- city[city$genus== "Tylenchidae",c("presence_city")] <- 22
- city[city$genus== "Anguinidae",c("presence_city")] <- 24
- city[city$genus== "Tylenchorhynchus",c("presence_city")] <- 17
- city[city$genus== "Trichodorus",c("presence_city")] <- 7
- city[city$genus== "Heterodera",c("presence_city")] <- 13
- city[city$genus== "Paratrichodorus",c("presence_city")] <- 7
- city[city$genus== "Hemicycliophora",c("presence_city")] <- 9
- city[city$genus== "Xiphinema",c("presence_city")] <- 2
- city[city$genus== "Paratylenchus",c("presence_city")] <- 2
- city[city$genus== "Merlinius",c("presence_city")] <- 1
- city[city$genus=="Scutellonema",c("presence_city")] <- 7
- city[city$genus== "Longidorus",c("presence_city")] <- 2
- city[city$genus== "Hoplolaimus",c("presence_city")] <- 3 
+    n = n(),
+    total_quantity = sum(quantity),
+    sd = sd(quantity),
+    mean_density = total_quantity / n,
+    se = sd / sqrt(n),
+    .groups = "drop"
+  )
 
- city_mean = city %>% 
-   filter(quantity > 0) %>% 
-  group_by(genus,city) %>% 
-  summarise(
-   mean_density = quantity/presence_city)
- 
- city_mean
+municipality_density
 ```
+
 ```{r}
-city_mean %>% 
+municipality_density %>% 
 filter(!genus %in% c("Aphelenchus","Aphelenchoides","Criconematidae","Rotylenchulus",
                        "Pratylenchus","Helicotylenchus")) %>%
 ggplot(aes(city,mean_density)) +
@@ -584,64 +528,42 @@ ggplot(aes(city,mean_density)) +
 ```{r}
 #Mean density
  
- mean_density = population %>% 
-   group_by(genus,city) %>% 
-   filter(quantity > 0) %>% 
+total_density <- population %>%
+  filter(quantity > 0) %>%
+  group_by(genus) %>%
   summarise(
-    density = sum(quantity)) 
- 
- #Samples
- 
- mean_density[mean_density$genus== "Helicotylenchus",c("presence")] <- 317
- mean_density[mean_density$genus== "Pratylenchus",c("presence")] <- 237
- mean_density[mean_density$genus== "Meloidogyne",c("presence")] <- 43
- mean_density[mean_density$genus== "Aphelenchus",c("presence")] <- 288
- mean_density[mean_density$genus== "Aphelenchoides",c("presence")] <- 211
- mean_density[mean_density$genus== "Criconematidae",c("presence")] <- 78
- mean_density[mean_density$genus== "Rotylenchus",c("presence")] <- 93
- mean_density[mean_density$genus== "Rotylenchulus",c("presence")] <- 22
- mean_density[mean_density$genus== "Tylenchidae",c("presence")] <- 125
- mean_density[mean_density$genus== "Anguinidae",c("presence")] <- 97
- mean_density[mean_density$genus== "Tylenchorhynchus",c("presence")] <- 46
- mean_density[mean_density$genus== "Trichodorus",c("presence")] <- 17  
- mean_density[mean_density$genus== "Heterodera",c("presence")] <- 58
- mean_density[mean_density$genus== "Paratrichodorus",c("presence")] <- 15
- mean_density[mean_density$genus== "Hemicycliophora",c("presence")] <- 19
- mean_density[mean_density$genus== "Xiphinema",c("presence")] <- 2
- mean_density[mean_density$genus== "Paratylenchus",c("presence")] <- 3
- mean_density[mean_density$genus== "Merlinius",c("presence")] <- 1  
- mean_density[mean_density$genus== "Scutellonema",c("presence")] <- 11
- mean_density[mean_density$genus== "Longidorus",c("presence")] <- 4  
- mean_density[mean_density$genus== "Hoplolaimus",c("presence")] <- 3
-   
- 
- mean_density = mean_density %>% 
-   group_by(genus,city) %>% 
-   filter(density > 0) %>% 
-  summarise(
-       mean_density = density/presence)
- 
- mean_density
+    n = n(),
+    total_quantity = sum(quantity),
+    sd = sd(quantity),
+    mean_density = total_quantity / n,
+    se = sd / sqrt(n),
+    .groups = "drop"
+  )
+
+total_density
 ```
 
 
 ## By soil
 
 ```{r}
-  soil_density = population %>% 
-  dplyr::filter(soil %in% c("Latossolo","Argissolo","Cambissolo")) %>% 
-  dplyr::filter(quantity > 0) %>% 
-  dplyr::group_by(genus,soil) %>% 
-  dplyr::reframe(
+
+soil_density <- population %>%
+  #dplyr::filter(soil %in% c("Latossolo","Argissolo","Cambissolo")) %>% 
+  filter(quantity > 0) %>%
+  group_by(genus,soil) %>%
+  summarise(
     n = n(),
-      quantity2 = sum(quantity),
-    sd = sd(quantity)) %>%  
-  dplyr::group_by(genus,soil) %>% 
-  dplyr::reframe(
-        mean_density = quantity2/n,
-        sd = sd/n
+    total_quantity = sum(quantity),
+    sd = sd(quantity),
+    mean_density = total_quantity / n,
+    se = sd / sqrt(n),
+    .groups = "drop"
   )
 
+soil_density
+```
+```{r}
 soil_density[soil_density$soil== "Latossolo",c("soil_goias")] <- "Latosol"
 soil_density[soil_density$soil== "Cambissolo",c("soil_goias")] <- "Cambisol"
 soil_density[soil_density$soil== "Argissolo",c("soil_goias")] <- "Argisol"
@@ -650,6 +572,7 @@ soil_density[soil_density$soil== "Argissolo",c("soil_goias")] <- "Argisol"
 # graphic for more expressive
 
 soil_graphic = soil_density %>% 
+  dplyr::filter(soil %in% c("Latossolo","Argissolo","Cambissolo")) %>% 
   filter(genus %in% c("Helicotylenchus","Rotylenchulus","Pratylenchus","Aphelenchoides",
                        "Aphelenchus", "Criconematidae")) %>% 
   ggplot(aes(reorder(genus,+mean_density), mean_density,
@@ -667,8 +590,6 @@ soil_graphic = soil_density %>%
        axis.text.x = element_blank()) #angle = 45, vjust = 1, hjust = 1,face = "italic"
 
 ggsave("fig/soil_mean_density.png", dpi = 600, bg = "white", width = 10, height = 6)
-
-
 ```
 
 ```{r}
@@ -684,21 +605,20 @@ count(soil_density)
 ```{r}
 #library(ggridges)
 
-
-cropping_density = population %>% 
-  filter(quantity >0) %>% 
-  group_by(genus,cropping) %>% 
+cropping_density <- population %>%
+  filter(quantity > 0) %>%
+  group_by(genus,cropping) %>%
   summarise(
     n = n(),
-      quantity = sum(quantity)) %>% 
-  group_by(genus,cropping) %>% 
-  summarise(
-    mean_density = quantity/n
+    total_quantity = sum(quantity),
+    sd = sd(quantity),
+    mean_density = total_quantity / n,
+    se = sd / sqrt(n),
+    .groups = "drop"
   )
 
-    
-count(cropping_density)
-
+```
+```{r}
 cropping_density[cropping_density$cropping== "Corn_soybean",c("cropping_practice")] <- "Succession"
 cropping_density[cropping_density$cropping== "Corn_others",c("cropping_practice")] <- "Rotation"
 
@@ -739,8 +659,6 @@ plot_grid(corn_soybean,corn_others, label_size = 32)
  
 ggsave("fig/cropping_density_histogram.png", 
        dpi = 600, width = 10, height = 6, bg = "white")
-
-
 ```
 
 ```{r}
@@ -756,21 +674,20 @@ cropping_density %>%
 ## By tillage
 
 ```{r}
-
-tillage_density = population %>% 
-  filter(quantity >0) %>% 
-  group_by(genus,tillage) %>% 
+tillage_density <- population %>%
+  filter(quantity > 0) %>%
+  group_by(genus,tillage) %>%
   summarise(
     n = n(),
-      quantity = sum(quantity)) %>% 
-  group_by(genus,tillage) %>% 
-  summarise(
-    mean_density = quantity/n
+    total_quantity = sum(quantity),
+    sd = sd(quantity),
+    mean_density = total_quantity / n,
+    se = sd / sqrt(n),
+    .groups = "drop"
   )
 
-count(tillage_density)
-
-
+```
+```{r}
 tillage_graphic = tillage_density %>% 
   filter(genus %in% c("Aphelenchus","Aphelenchoides","Criconematidae","Rotylenchulus",
                   "Pratylenchus","Helicotylenchus")) %>% 
@@ -789,14 +706,6 @@ tillage_graphic = tillage_density %>%
        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1,face = "italic"))
 
 ggsave("fig/tillage_density.png", bg = "white", dpi = 600, width = 10, height = 6)
-
-tillage_density %>% 
-filter(!genus %in% c("Aphelenchus","Aphelenchus","Aphelenchoides","Criconematidae",
-                       "Helicotylenchus","Rotylenchulus")) %>% 
-  group_by(tillage) %>% 
-  summarise(
-    mean = mean(mean_density),
-    sd = sd(mean_density))
 ```
 
 ## Altitude
@@ -812,6 +721,19 @@ population <- population %>%
     altitute <= 1000 ~ "801 to 1000",
     altitute > 1000 ~"Above 1001"
   ))
+
+altitude_density <- population %>%
+  filter(quantity > 0) %>%
+  group_by(genus,altitude_range) %>%
+  summarise(
+    n = n(),
+    total_quantity = sum(quantity),
+    sd = sd(quantity),
+    mean_density = total_quantity / n,
+    se = sd / sqrt(n),
+    .groups = "drop"
+  )
+
 
 altitude_density = population %>% 
   filter(quantity >0) %>% 
@@ -987,7 +909,7 @@ ggplot(aes(city,mean)) +
         strip.text = element_text(face = "italic"))
 
 
- ggsave("fig/abundance_city2.png", dpi = 600, bg = "white", width = 10, height = 6)
+ #ggsave("fig/abundance_city2.png", dpi = 600, bg = "white", width = 10, height = 6)
 ```
 
 ```{r}
@@ -1137,7 +1059,7 @@ ggsave("fig/tillage_supplementary.png", dpi = 600, width = 26, height = 12, bg =
 # Mapping
 
 ```{r}
-aphelenchus = mean_density %>% 
+aphelenchus = municipality_density %>% 
   filter(genus == "Aphelenchus") %>% 
 group_by(city) %>% 
   summarise( 
@@ -1149,7 +1071,7 @@ aphelenchus["genus"]=  c("Aphelenchus","Aphelenchus","Aphelenchus","Aphelenchus"
                     "Aphelenchus","Aphelenchus","Aphelenchus","Aphelenchus","Aphelenchus",
                     "Aphelenchus")
 
-aphelenchoides = mean_density %>% 
+aphelenchoides = municipality_density %>% 
   filter(genus == "Aphelenchoides") %>% 
 group_by(city) %>% 
   summarise( 
@@ -1162,7 +1084,7 @@ aphelenchoides["genus"]=  c("Aphelenchoides","Aphelenchoides","Aphelenchoides","
                     "Aphelenchoides","Aphelenchoides","Aphelenchoides","Aphelenchoides",
                     "Aphelenchoides")
 
-rotylenchulus = mean_density %>% 
+rotylenchulus = municipality_density %>% 
   filter(genus == "Rotylenchulus") %>% 
 group_by(city) %>% 
   summarise( 
@@ -1170,7 +1092,7 @@ group_by(city) %>%
 rotylenchulus["genus"]=  c("Rotylenchulus","Rotylenchulus","Rotylenchulus","Rotylenchulus",
                     "Rotylenchulus","Rotylenchulus")
 
-helicotylenchus = mean_density %>% 
+helicotylenchus = municipality_density %>% 
   filter(genus == "Helicotylenchus") %>% 
 group_by(city) %>% 
   summarise( 
@@ -1184,7 +1106,7 @@ helicotylenchus["genus"]=c("Helicotylenchus","Helicotylenchus","Helicotylenchus"
                     "Helicotylenchus","Helicotylenchus","Helicotylenchus","Helicotylenchus",
                     "Helicotylenchus","Helicotylenchus")
 
-pratylenchus = mean_density %>% 
+pratylenchus = municipality_density %>% 
   filter(genus == "Pratylenchus") %>% 
 group_by(city) %>% 
   summarise( 
@@ -1197,7 +1119,7 @@ pratylenchus["genus"] =  c("Pratylenchus","Pratylenchus","Pratylenchus","Pratyle
                     "Pratylenchus","Pratylenchus","Pratylenchus","Pratylenchus",
                     "Pratylenchus")
 
-criconematidae = mean_density %>% 
+criconematidae = municipality_density %>% 
   filter(genus == "Criconematidae") %>% 
 group_by(city) %>% 
   summarise( 

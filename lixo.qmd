@@ -39,7 +39,6 @@ editor: visual
  incidence[incidence$city== "Vianópolis",c("samples_n")] <- 15
 ```
 
-
 ## Models diagnostic (graphic)
 
 ```{r}
@@ -605,7 +604,7 @@ altitude_genus %>%
 ggsave("probability_sand_tillage_all_genus.png", dpi = 600, width = 14, height = 8, bg = "white")
 ```
 
-### By tillage and  pH
+### By tillage and pH
 
 ```{r}
 altitude_genus %>% 
@@ -1039,7 +1038,6 @@ colMeans(summary(criconematidae_cv))
 
 ```
 
-
 # Modelagem da abundância
 
 ```{r}
@@ -1232,6 +1230,7 @@ all_genus1 <- all_genus %>%
 ```
 
 ## Plotting
+
 ```{r}
 all_genus1 %>% 
     filter(genus %in% c("Helicotylenchus","Pratylenchus","Aphelenchus",
@@ -1271,4 +1270,193 @@ model_performance(aphel_log)
 check_model(aphels_log)
 model_performance(aphels_log)
 ```
+
+# Mean density
+
+## Region
+```{r}
+
+region = population %>% 
+  #filter(Sampling == "Root") %>% 
+  filter(quantity > 0) %>% 
+  group_by(genus,region) %>% 
+  summarise(
+      quantity = sum(quantity)) 
+
+ population %>% 
+  #filter(Sampling == "Root") %>% 
+  filter(quantity > 0) %>% 
+  group_by(genus,region) %>% 
+  summarise( 
+        quantity = sum(quantity)) %>% 
+   group_by(genus) %>% 
+   summarise(
+     n = n()
+   )
+ 
+ region[region$genus== "Helicotylenchus",c("presence_region")] <- 6
+ region[region$genus== "Pratylenchus",c("presence_region")] <- 6
+ region[region$genus== "Meloidogyne",c("presence_region")] <- 5
+ region[region$genus== "Aphelenchus",c("presence_region")] <- 6
+ region[region$genus== "Aphelenchoides",c("presence_region")] <- 5 
+ region[region$genus== "Criconematidae",c("presence_region")] <- 6
+ region[region$genus== "Rotylenchus",c("presence_region")] <- 5
+ region[region$genus== "Rotylenchulus",c("presence_region")] <- 4 
+ region[region$genus== "Tylenchidae",c("presence_region")] <- 6
+ region[region$genus== "Anguinidae",c("presence_region")] <- 6
+ region[region$genus== "Tylenchorhynchus",c("presence_region")] <- 5
+ region[region$genus== "Trichodorus",c("presence_region")] <- 4
+ region[region$genus== "Heterodera",c("presence_region")] <- 3
+ region[region$genus== "Paratrichodorus",c("presence_region")] <- 3
+ region[region$genus=="Hemicycliophora",c("presence_region")] <- 4
+ region[region$genus== "Xiphinema",c("presence_region")] <- 1
+ region[region$genus== "Paratylenchus",c("presence_region")] <- 1
+ region[region$genus== "Merlinius",c("presence_region")] <- 1
+ region[region$genus=="Scutellonema",c("presence_region")] <- 4
+ region[region$genus== "Longidorus",c("presence_region")] <- 2
+ region[region$genus== "Hoplolaimus",c("presence_region")] <- 2
+ 
+ 
+  region_mean = region %>% 
+   filter(quantity > 0) %>% 
+  group_by(genus,region) %>% 
+  summarise(
+   mean_density = quantity/presence_region)
+  
+
+region_mean
+```
+
+## Municipality
+
+```{r}
+city = population %>% 
+  #filter(Sampling == "Root") %>% 
+  filter(quantity > 0) %>% 
+  group_by(genus,city) %>% 
+  summarise(
+      quantity = sum(quantity)
+  ) 
+ 
+ city[city$genus== "Helicotylenchus",c("presence_city")] <- 26
+ city[city$genus== "Pratylenchus",c("presence_city")] <- 25
+ city[city$genus== "Meloidogyne",c("presence_city")] <- 16
+ city[city$genus== "Aphelenchus",c("presence_city")] <- 26
+ city[city$genus== "Aphelenchoides",c("presence_city")] <- 25
+ city[city$genus== "Criconematidae",c("presence_city")] <- 21
+ city[city$genus== "Rotylenchus",c("presence_city")] <- 19
+ city[city$genus== "Rotylenchulus",c("presence_city")] <- 6
+ city[city$genus== "Tylenchidae",c("presence_city")] <- 22
+ city[city$genus== "Anguinidae",c("presence_city")] <- 24
+ city[city$genus== "Tylenchorhynchus",c("presence_city")] <- 17
+ city[city$genus== "Trichodorus",c("presence_city")] <- 7
+ city[city$genus== "Heterodera",c("presence_city")] <- 13
+ city[city$genus== "Paratrichodorus",c("presence_city")] <- 7
+ city[city$genus== "Hemicycliophora",c("presence_city")] <- 9
+ city[city$genus== "Xiphinema",c("presence_city")] <- 2
+ city[city$genus== "Paratylenchus",c("presence_city")] <- 2
+ city[city$genus== "Merlinius",c("presence_city")] <- 1
+ city[city$genus=="Scutellonema",c("presence_city")] <- 7
+ city[city$genus== "Longidorus",c("presence_city")] <- 2
+ city[city$genus== "Hoplolaimus",c("presence_city")] <- 3 
+
+ city_mean = city %>% 
+   filter(quantity > 0) %>% 
+  group_by(genus,city) %>% 
+  summarise(
+   mean_density = quantity/presence_city)
+ 
+ city_mean
+```
+
+## Sample
+
+```{r}
+ mean_density = population %>% 
+   group_by(genus,city) %>% 
+   filter(quantity > 0) %>% 
+  summarise(
+    density = sum(quantity)) 
+ 
+ #Samples
+ 
+ mean_density[mean_density$genus== "Helicotylenchus",c("presence")] <- 317
+ mean_density[mean_density$genus== "Pratylenchus",c("presence")] <- 237
+ mean_density[mean_density$genus== "Meloidogyne",c("presence")] <- 43
+ mean_density[mean_density$genus== "Aphelenchus",c("presence")] <- 288
+ mean_density[mean_density$genus== "Aphelenchoides",c("presence")] <- 211
+ mean_density[mean_density$genus== "Criconematidae",c("presence")] <- 78
+ mean_density[mean_density$genus== "Rotylenchus",c("presence")] <- 93
+ mean_density[mean_density$genus== "Rotylenchulus",c("presence")] <- 22
+ mean_density[mean_density$genus== "Tylenchidae",c("presence")] <- 125
+ mean_density[mean_density$genus== "Anguinidae",c("presence")] <- 97
+ mean_density[mean_density$genus== "Tylenchorhynchus",c("presence")] <- 46
+ mean_density[mean_density$genus== "Trichodorus",c("presence")] <- 17  
+ mean_density[mean_density$genus== "Heterodera",c("presence")] <- 58
+ mean_density[mean_density$genus== "Paratrichodorus",c("presence")] <- 15
+ mean_density[mean_density$genus== "Hemicycliophora",c("presence")] <- 19
+ mean_density[mean_density$genus== "Xiphinema",c("presence")] <- 2
+ mean_density[mean_density$genus== "Paratylenchus",c("presence")] <- 3
+ mean_density[mean_density$genus== "Merlinius",c("presence")] <- 1  
+ mean_density[mean_density$genus== "Scutellonema",c("presence")] <- 11
+ mean_density[mean_density$genus== "Longidorus",c("presence")] <- 4  
+ mean_density[mean_density$genus== "Hoplolaimus",c("presence")] <- 3
+   
+ 
+ mean_density = mean_density %>% 
+   group_by(genus,city) %>% 
+   filter(density > 0) %>% 
+  summarise(
+       mean_density = density/presence)
+ 
+ mean_density
+```
+
+## Soil
+
+```{r}
+  soil_density = population %>% 
+  dplyr::filter(soil %in% c("Latossolo","Argissolo","Cambissolo")) %>% 
+  dplyr::filter(quantity > 0) %>% 
+  dplyr::group_by(genus,soil) %>% 
+  dplyr::reframe(
+    n = n(),
+      quantity2 = sum(quantity),
+    sd = sd(quantity)) %>%  
+  dplyr::group_by(genus,soil) %>% 
+  dplyr::reframe(
+        mean_density = quantity2/n,
+        sd = sd/n
+  )
+```
+
+## Cropping
+```{r}
+cropping_density = population %>% 
+  filter(quantity >0) %>% 
+  group_by(genus,cropping) %>% 
+  summarise(
+    n = n(),
+      quantity = sum(quantity)) %>% 
+  group_by(genus,cropping) %>% 
+  summarise(
+    mean_density = quantity/n
+  )
+```
+
+## Tillage
+```{r}
+tillage_density = population %>% 
+  filter(quantity >0) %>% 
+  group_by(genus,tillage) %>% 
+  summarise(
+    n = n(),
+      quantity = sum(quantity)) %>% 
+  group_by(genus,tillage) %>% 
+  summarise(
+    mean_density = quantity/n
+  )
+
+```
+
 
