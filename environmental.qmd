@@ -2110,14 +2110,14 @@ ggsave("fig/probability_clay.png", dpi = 600, width = 10, height = 6, bg = "whit
 helicotylenchus_ordinal$risk_category = as.factor(helicotylenchus_ordinal$risk_category)
 
 helic_ordinal = clm(risk_category ~ altitute + tillage + cropping + soil + sand + clay  +
-                       ec,
+                       ph,
                      data = helicotylenchus_ordinal,link = "logit")
 
 pratylenchus_ordinal$risk_category = as.factor(pratylenchus_ordinal$risk_category)
 
 
 praty_ordinal = clm(risk_category ~ altitute + tillage + cropping + soil + sand + clay  +
-                       ec,
+                       ph,
                      data = pratylenchus_ordinal,link = "logit")
 
 
@@ -2212,7 +2212,3 @@ final_plot
 
 ggsave("fig/ordinal_genus.png", dpi = 600, bg = "white",height = 6, width = 10)
 ```
-
-
-
-
